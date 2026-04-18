@@ -705,7 +705,7 @@ a {
 
 .empty {
   text-align: center;
-  padding: 48px 20px;
+  padding: 20px 12px;
   color: var(--muted);
   border: 1px dashed var(--line);
   border-radius: var(--radius-sm);
@@ -1197,5 +1197,106 @@ body.modal-open {
 
   .content {
     padding: 18px 16px;
+  }
+}
+/* ===== CORREÇÃO FORÇADA DO ESPAÇAMENTO DO DASHBOARD ===== */
+#view-dashboard {
+  gap: 14px !important;
+}
+
+#view-dashboard .stats {
+  gap: 14px !important;
+  margin-bottom: 0 !important;
+}
+
+#view-dashboard .stats .card {
+  min-height: 132px !important;
+  padding: 18px 20px !important;
+}
+
+#view-dashboard .dashboard-grid {
+  grid-template-columns: 1.08fr 0.92fr !important;
+  gap: 14px !important;
+  align-items: start !important;
+}
+
+#view-dashboard .card {
+  padding: 18px 20px !important;
+}
+
+#view-dashboard .section-title {
+  margin: 0 0 2px !important;
+  font-size: 22px !important;
+}
+
+#view-dashboard .section-subtitle {
+  margin: 0 0 12px !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+}
+
+#view-dashboard .agenda-list {
+  gap: 10px !important;
+}
+
+#view-dashboard .empty {
+  min-height: 88px !important;
+  padding: 16px 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 13px !important;
+}
+
+#view-dashboard .stat-label {
+  margin-bottom: 8px !important;
+}
+
+#view-dashboard .stat-value {
+  margin-bottom: 6px !important;
+  font-size: 34px !important;
+}
+
+#view-dashboard .stat-note {
+  font-size: 13px !important;
+  line-height: 1.35 !important;
+}
+
+.content {
+  padding: 20px 28px !important;
+}
+
+.shell {
+  gap: 14px !important;
+}
+
+.topbar {
+  margin-bottom: 18px !important;
+}
+
+.headline h2 {
+  margin-bottom: 0 !important;
+  font-size: 34px !important;
+}
+
+@media (max-width: 1180px) {
+  #view-dashboard .dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .content {
+    padding: 16px !important;
+  }
+
+  #view-dashboard .card,
+  #view-dashboard .stats .card {
+    padding: 16px !important;
+  }
+
+  #view-dashboard .empty {
+    min-height: 72px !important;
+    padding: 12px !important;
   }
 }
