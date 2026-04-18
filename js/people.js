@@ -1,370 +1,471 @@
-// ============================================================
-// people.js — Cadastro, edição, listagem e exclusão de convidados
-// ============================================================
-
 window.App = window.App || {};
 
-// ------------------------------------------------------------
-// Busca duplicatas por placa ou telefone (ignora o próprio ID)
-// ------------------------------------------------------------
-App.findDuplicatePeople = function ({ placa = '', telefone = '', ignoreId = '' }) {
-  const placaNorm    = App.normalizePlate(placa);
-  const telefoneNorm = String(telefone).trim();
+/* ============================================================
+   PESSOAS — cadastro + reaproveitamento de cadastro existente
+   ============================================================ */
 
-  const duplicatePlate = App.state.pessoas.find(
-    (p) => p.id !== ignoreId && App.normalizePlate(p.placa) === placaNorm
-  ) ?? null;
+App.renderPeople = function () {
+  const dom = App.dom;
+  if (!dom.viewPeople) return;
 
-  const duplicatePhone = App.state.pessoas.find(
-    (p) => p.id !== ignoreId && String(p.telefone || '').trim() === telefoneNorm
-  ) ?? null;
+  const pessoas  = App.state.pessoas  || [];
+  const eventos  = App.state.eventos  || [];
+  const presencas = App.state.presencas || [];
 
-  return { duplicatePlate, duplicatePhone };
-};
-
-// ------------------------------------------------------------
-// Salva ou reutiliza um convidado e vincula ao evento
-// ------------------------------------------------------------
-App.handleSavePerson = async function (event) {
-  event.preventDefault();
-  if (!App.ensureSupabaseReady()) return;
-
-  // — Coleta e valida campos —
-  const eventoId = App.dom.pessoaEvento?.value.trim() || '';
-  const nome     = App.dom.pessoaNome?.value.trim()   || '';
-  const placa    = App.normalizePlate(App.dom.pessoaPlaca?.value || '');
-  const telefone = App.dom.pessoaTelefone?.value.trim() || '';
-  const email    = App.dom.pessoaEmail?.value.trim()  || '';
-
-  if (!eventoId) {
-    App.showToast('Selecione o evento para vincular a pessoa.', 'warning');
-    return;
-  }
-
-  if (!nome || !placa || !telefone) {
-    App.showToast('Preencha nome, placa e telefone.', 'warning');
-    return;
-  }
-
-  // — Verifica se o evento existe —
-  if (!App.getEventById(eventoId)) {
-    App.showToast('Evento selecionado não encontrado.', 'error');
-    return;
-  }
-
-  // — Detecta duplicatas —
-  const { duplicatePlate, duplicatePhone } = App.findDuplicatePeople({ placa, telefone });
-
-  // Placa e telefone apontam para pessoas diferentes — conflito real
-  if (duplicatePlate && duplicatePhone && duplicatePlate.id !== duplicatePhone.id) {
-    App.showToast(
-      'Conflito: a placa e o telefone pertencem a cadastros diferentes.',
-      'error',
-      4800
-    );
-    return;
-  }
-
-  const submitBtn = App.dom.formPessoa?.querySelector('button[type="submit"]');
-  App._setButtonLoading(submitBtn, true, 'Salvando…');
-
-  try {
-    let pessoa = duplicatePlate ?? duplicatePhone ?? null;
-
-    if (pessoa) {
-      // — Reutiliza cadastro existente e atualiza os dados —
-      const motivo = duplicatePlate ? 'placa' : 'telefone';
-      App.showToast(
-        `Esta ${motivo} já está cadastrada. O registro existente será reutilizado e atualizado.`,
-        'warning',
-        4200
-      );
-
-      const { error } = await App.db
-        .from('pessoas')
-        .update({ nome, placa, telefone, email })
-        .eq('id', pessoa.id);
-
-      if (error) throw new Error(`Erro ao atualizar convidado: ${error.message}`);
-
-    } else {
-      // — Cria novo cadastro —
-      pessoa = {
-        id:        App.createId(),
-        nome,
-        placa,
-        telefone,
-        email,
-        criado_em: new Date().toISOString(),
-      };
-
-      const { error } = await App.db.from('pessoas').insert([pessoa]);
-      if (error) throw new Error(`Erro ao salvar convidado: ${error.message}`);
-    }
-
-    // — Verifica se já está registrada neste evento —
-    const jaRegistrada = App.state.presencas.some(
-      (p) => p.evento_id === eventoId && p.pessoa_id === pessoa.id
-    );
-
-    if (jaRegistrada) {
-      App.showToast(
-        `${App.escapeHtml(nome)} já está registrada neste evento.`,
-        'warning'
-      );
-      return;
-    }
-
-    // — Registra a presença —
-    const presenca = {
-      id:            App.createId(),
-      evento_id:     eventoId,
-      pessoa_id:     pessoa.id,
-      registrado_em: new Date().toISOString(),
-    };
-
-    const { error: presencaError } = await App.db.from('presencas').insert([presenca]);
-    if (presencaError) throw new Error(`Erro ao vincular ao evento: ${presencaError.message}`);
-
-    App.dom.formPessoa?.reset();
-    await App.refreshAfterChange('pessoas');
-    App.showToast(`${nome} cadastrado(a) e vinculado(a) ao evento com sucesso.`, 'success');
-
-  } catch (err) {
-    console.error('[People] Erro ao salvar pessoa:', err);
-    App.showToast(err.message || 'Não foi possível salvar o convidado.', 'error');
-
-  } finally {
-    App._setButtonLoading(submitBtn, false, 'Salvar pessoa no evento');
-  }
-};
-
-// ------------------------------------------------------------
-// Abre o modal de edição preenchido com os dados da pessoa
-// ------------------------------------------------------------
-App.openEditPersonModal = function (id) {
-  const pessoa = App.getPersonById(id);
-
-  if (!pessoa) {
-    App.showToast('Convidado não encontrado.', 'error');
-    return;
-  }
-
-  if (App.dom.editPessoaId)        App.dom.editPessoaId.value        = pessoa.id        || '';
-  if (App.dom.editPessoaNome)      App.dom.editPessoaNome.value      = pessoa.nome       || '';
-  if (App.dom.editPessoaPlaca)     App.dom.editPessoaPlaca.value     = pessoa.placa      || '';
-  if (App.dom.editPessoaTelefone)  App.dom.editPessoaTelefone.value  = pessoa.telefone   || '';
-  if (App.dom.editPessoaEmail)     App.dom.editPessoaEmail.value     = pessoa.email      || '';
-
-  App.openModal(App.dom.editPessoaModal);
-};
-
-// ------------------------------------------------------------
-// Salva as alterações de um convidado editado
-// ------------------------------------------------------------
-App.handleUpdatePerson = async function (event) {
-  event.preventDefault();
-  if (!App.ensureSupabaseReady()) return;
-
-  const id       = App.dom.editPessoaId?.value.trim()        || '';
-  const nome     = App.dom.editPessoaNome?.value.trim()      || '';
-  const placa    = App.normalizePlate(App.dom.editPessoaPlaca?.value || '');
-  const telefone = App.dom.editPessoaTelefone?.value.trim()  || '';
-  const email    = App.dom.editPessoaEmail?.value.trim()     || '';
-
-  if (!id || !nome || !placa || !telefone) {
-    App.showToast('Preencha nome, placa e telefone.', 'warning');
-    return;
-  }
-
-  // — Verifica conflitos com outros cadastros (ignora o próprio) —
-  const { duplicatePlate, duplicatePhone } = App.findDuplicatePeople({
-    placa,
-    telefone,
-    ignoreId: id,
-  });
-
-  if (duplicatePlate && duplicatePhone && duplicatePlate.id !== duplicatePhone.id) {
-    App.showToast(
-      'Conflito: a placa e o telefone pertencem a cadastros diferentes.',
-      'error',
-      4800
-    );
-    return;
-  }
-
-  if (duplicatePlate) {
-    App.showToast('Esta placa já pertence a outro cadastro.', 'warning');
-    return;
-  }
-
-  if (duplicatePhone) {
-    App.showToast('Este telefone já pertence a outro cadastro.', 'warning');
-    return;
-  }
-
-  const submitBtn = App.dom.editPessoaForm?.querySelector('button[type="submit"]');
-  App._setButtonLoading(submitBtn, true, 'Salvando…');
-
-  try {
-    const { error } = await App.db
-      .from('pessoas')
-      .update({ nome, placa, telefone, email })
-      .eq('id', id);
-
-    if (error) throw new Error(`Erro ao atualizar convidado: ${error.message}`);
-
-    App.closeModal(App.dom.editPessoaModal);
-    await App.refreshAfterChange('pessoas');
-    App.showToast('Cadastro atualizado com sucesso.', 'success');
-
-  } catch (err) {
-    console.error('[People] Erro ao editar pessoa:', err);
-    App.showToast(err.message || 'Não foi possível editar o convidado.', 'error');
-
-  } finally {
-    App._setButtonLoading(submitBtn, false, 'Salvar alterações');
-  }
-};
-
-// ------------------------------------------------------------
-// Renderiza a lista de convidados com filtro de busca
-// ------------------------------------------------------------
-App.renderPeopleList = function () {
-  const container = App.dom.listaPessoas;
-  if (!container) return;
-
-  const query = App.normalizeText(App.dom.buscaPessoas?.value.trim() || '');
-
-  const lista = App.state.pessoas.filter((p) => {
-    if (!query) return true;
-    const texto = App.normalizeText([
-      p.nome,
-      p.placa,
-      p.telefone,
-      p.email || '',
-    ].join(' '));
-    return texto.includes(query);
-  });
-
-  if (!lista.length) {
-    App.renderEmptyState(
-      container,
-      query ? 'Nenhum convidado encontrado para essa busca.' : 'Nenhum convidado cadastrado ainda.'
-    );
-    return;
-  }
-
-  // Mapa de contagem de participações por pessoa O(n) único
-  const participacoes = App.state.presencas.reduce((acc, p) => {
-    acc[p.pessoa_id] = (acc[p.pessoa_id] || 0) + 1;
-    return acc;
-  }, {});
-
-  container.innerHTML = lista
-    .map((pessoa) => App._renderPersonItem(pessoa, participacoes[pessoa.id] || 0))
-    .join('');
-};
-
-// ------------------------------------------------------------
-// Template de um item de convidado na lista
-// ------------------------------------------------------------
-App._renderPersonItem = function (pessoa, totalEventos) {
-  const telefoneHtml = pessoa.telefone
-    ? `<a href="tel:${App.escapeHtml(pessoa.telefone)}" class="link-discreto">${App.escapeHtml(pessoa.telefone)}</a>`
-    : '—';
-
-  const emailHtml = pessoa.email
-    ? `<a href="mailto:${App.escapeHtml(pessoa.email)}" class="link-discreto">${App.escapeHtml(pessoa.email)}</a>`
-    : '<span class="text-muted">Sem e-mail cadastrado</span>';
-
-  return `
-    <div class="list-item" data-id="${App.escapeHtml(pessoa.id)}">
-      <div class="list-item-body">
-        <h4>${App.escapeHtml(pessoa.nome)}</h4>
-
-        <p class="list-item-meta">
-          <strong>Placa:</strong> ${App.escapeHtml(pessoa.placa || '—')} •
-          <strong>Tel:</strong> ${telefoneHtml}
+  dom.viewPeople.innerHTML = `
+    <div class="topbar">
+      <div class="headline">
+        <h2 id="viewTitle">Pessoas</h2>
+        <p class="section-subtitle section-subtitle--flush">
+          Cadastre ou reative convidados por evento.
         </p>
+      </div>
+      <div class="top-actions">
+        <button class="btn" id="btnNovaPessoa">+ Nova pessoa</button>
+      </div>
+    </div>
 
-        <p class="list-item-meta">${emailHtml}</p>
+    <div class="shell">
 
-        <div class="chips">
-          <span class="chip">${totalEventos} evento${totalEventos !== 1 ? 's' : ''}</span>
+      <!-- Busca rápida -->
+      <div class="card">
+        <p class="subsection-title">Buscar pessoa existente</p>
+        <div class="toolbar">
+          <input
+            class="search"
+            id="inputBuscaPessoa"
+            type="text"
+            placeholder="Nome ou placa…"
+            autocomplete="off"
+          />
         </div>
+        <div id="resultadoBusca"></div>
+      </div>
 
-        <div class="item-actions">
-          <button
-            class="btn-secondary"
-            type="button"
-            data-action="edit-person"
-            data-id="${App.escapeHtml(pessoa.id)}"
-            aria-label="Editar ${App.escapeHtml(pessoa.nome)}"
-          >
-            Editar
-          </button>
+      <!-- Lista completa -->
+      <div class="card">
+        <p class="subsection-title">Todas as pessoas</p>
+        <div id="listaPessoas" class="list"></div>
+      </div>
 
-          <button
-            class="btn-danger"
-            type="button"
-            data-action="delete-person"
-            data-id="${App.escapeHtml(pessoa.id)}"
-            aria-label="Excluir ${App.escapeHtml(pessoa.nome)}"
-          >
-            Excluir
-          </button>
+    </div>
+
+    <!-- Modal: vincular pessoa existente a evento -->
+    <div class="modal-overlay hidden" id="modalVincular">
+      <div class="modal-panel modal-panel-sm">
+        <div class="modal-header">
+          <h3 class="modal-title" id="modalVincularNome">Vincular ao evento</h3>
+        </div>
+        <div class="modal-body">
+          <p class="modal-text" id="modalVincularInfo"></p>
+          <div class="field" style="margin-top:18px">
+            <label for="selectEventoVincular">Evento</label>
+            <select id="selectEventoVincular"></select>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary" id="btnCancelarVincular">Cancelar</button>
+          <button class="btn"           id="btnConfirmarVincular">Vincular</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: nova pessoa completa -->
+    <div class="modal-overlay hidden" id="modalNovaPessoa">
+      <div class="modal-panel">
+        <div class="modal-header">
+          <h3 class="modal-title">Nova pessoa</h3>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="field">
+              <label for="inputNomePessoa">Nome</label>
+              <input id="inputNomePessoa" type="text" placeholder="Nome completo" />
+            </div>
+            <div class="field">
+              <label for="inputPlacaPessoa">Placa</label>
+              <input id="inputPlacaPessoa" type="text" placeholder="ABC1234" maxlength="8" />
+            </div>
+            <div class="field">
+              <label for="inputTelPessoa">Telefone</label>
+              <input id="inputTelPessoa" type="tel" placeholder="(11) 99999-9999" />
+            </div>
+            <div class="field">
+              <label for="selectEventoPessoa">Evento</label>
+              <select id="selectEventoPessoa"></select>
+            </div>
+            <div class="field full">
+              <label for="inputObsPessoa">Observações</label>
+              <textarea id="inputObsPessoa" placeholder="Anotações opcionais…"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary" id="btnCancelarNovaPessoa">Cancelar</button>
+          <button class="btn"           id="btnSalvarNovaPessoa">Salvar</button>
         </div>
       </div>
     </div>
   `;
+
+  App._renderListaPessoas(pessoas, presencas, eventos);
+  App._bindPeopleEvents(eventos);
 };
 
-// ------------------------------------------------------------
-// Exclui um convidado e todas as suas presenças
-// ------------------------------------------------------------
-App.deletePerson = async function (id) {
-  if (!App.ensureSupabaseReady()) return;
+/* ── Renderiza a lista completa ── */
+App._renderListaPessoas = function (pessoas, presencas, eventos) {
+  const el = document.getElementById('listaPessoas');
+  if (!el) return;
 
-  const pessoa = App.getPersonById(id);
-  if (!pessoa) {
-    App.showToast('Convidado não encontrado.', 'error');
+  if (!pessoas.length) {
+    el.innerHTML = `<div class="empty">Nenhuma pessoa cadastrada ainda.</div>`;
     return;
   }
 
-  const totalPresencas = App.state.presencas.filter(
-    (p) => p.pessoa_id === id
-  ).length;
+  el.innerHTML = pessoas.map(p => {
+    const eventosVinculados = presencas
+      .filter(pr => pr.pessoa_id === p.id)
+      .map(pr => {
+        const ev = (App.state.eventos || []).find(e => e.id === pr.evento_id);
+        return ev ? `<span class="chip chip--guest">${App.escapeHtml(ev.nome)}</span>` : '';
+      })
+      .filter(Boolean)
+      .join('');
 
-  const msg = totalPresencas > 0
-    ? `Excluir "${pessoa.nome}"? Ela está registrada em ${totalPresencas} evento${totalPresencas !== 1 ? 's' : ''}. Tudo será removido.`
-    : `Excluir "${pessoa.nome}" da base de convidados?`;
+    return `
+      <div class="list-item">
+        <div class="list-item-body">
+          <h4>${App.escapeHtml(p.nome)}</h4>
+          <span class="list-item-meta">
+            ${p.placa    ? 'Placa: ' + App.escapeHtml(p.placa) + ' &nbsp;·&nbsp; ' : ''}
+            ${p.telefone ? 'Tel: '   + App.escapeHtml(p.telefone) : ''}
+          </span>
+          ${p.observacoes ? `<span class="list-item-obs">${App.escapeHtml(p.observacoes)}</span>` : ''}
+          ${eventosVinculados ? `<div class="chips">${eventosVinculados}</div>` : ''}
+        </div>
+        <div class="list-item-actions">
+          <button class="btn-secondary btn-vincular-existente"
+            data-id="${p.id}"
+            data-nome="${App.escapeHtml(p.nome)}"
+            data-placa="${App.escapeHtml(p.placa || '')}"
+            data-tel="${App.escapeHtml(p.telefone || '')}">
+            + Evento
+          </button>
+          <button class="btn-danger btn-excluir-pessoa" data-id="${p.id}">
+            Remover
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+};
 
-  const confirmou = await App.confirm(msg, 'Excluir convidado');
-  if (!confirmou) return;
+/* ── Bind de todos os eventos da view ── */
+App._bindPeopleEvents = function (eventos) {
+  /* ---- busca rápida ---- */
+  const inputBusca = document.getElementById('inputBuscaPessoa');
+  if (inputBusca) {
+    inputBusca.addEventListener('input', App._debounce(function () {
+      App._buscarPessoa(this.value.trim(), eventos);
+    }, 240));
+  }
 
-  try {
-    if (totalPresencas > 0) {
-      const { error: presencasError } = await App.db
-        .from('presencas')
-        .delete()
-        .eq('pessoa_id', id);
+  /* ---- botão nova pessoa ---- */
+  const btnNova = document.getElementById('btnNovaPessoa');
+  if (btnNova) {
+    btnNova.addEventListener('click', function () {
+      App._abrirModalNovaPessoa(eventos);
+    });
+  }
 
-      if (presencasError) throw new Error(`Erro ao remover presenças: ${presencasError.message}`);
+  /* ---- botões na lista: vincular e excluir ---- */
+  const lista = document.getElementById('listaPessoas');
+  if (lista) {
+    lista.addEventListener('click', function (e) {
+      const btnVincular = e.target.closest('.btn-vincular-existente');
+      const btnExcluir  = e.target.closest('.btn-excluir-pessoa');
+
+      if (btnVincular) {
+        App._abrirModalVincular({
+          id:    btnVincular.dataset.id,
+          nome:  btnVincular.dataset.nome,
+          placa: btnVincular.dataset.placa,
+          tel:   btnVincular.dataset.tel,
+        }, eventos);
+      }
+
+      if (btnExcluir) {
+        App._excluirPessoa(btnExcluir.dataset.id);
+      }
+    });
+  }
+};
+
+/* ── Busca rápida ── */
+App._buscarPessoa = function (query, eventos) {
+  const resultado = document.getElementById('resultadoBusca');
+  if (!resultado) return;
+
+  if (!query) {
+    resultado.innerHTML = '';
+    return;
+  }
+
+  const q       = App.normalizeText(query);
+  const pessoas = App.state.pessoas || [];
+
+  const encontradas = pessoas.filter(p =>
+    App.normalizeText(p.nome   || '').includes(q) ||
+    App.normalizeText(p.placa  || '').includes(q) ||
+    App.normalizePlate(p.placa || '').includes(App.normalizePlate(query))
+  );
+
+  if (!encontradas.length) {
+    resultado.innerHTML = `<div class="empty">Nenhuma pessoa encontrada. Use "+ Nova pessoa" para cadastrar.</div>`;
+    return;
+  }
+
+  resultado.innerHTML = `
+    <div class="list" style="margin-top:12px">
+      ${encontradas.map(p => `
+        <div class="list-item">
+          <div class="list-item-body">
+            <h4>${App.escapeHtml(p.nome)}</h4>
+            <span class="list-item-meta">
+              ${p.placa    ? 'Placa: ' + App.escapeHtml(p.placa) + ' &nbsp;·&nbsp; ' : ''}
+              ${p.telefone ? 'Tel: '   + App.escapeHtml(p.telefone) : ''}
+            </span>
+          </div>
+          <div class="list-item-actions">
+            <button class="btn btn-vincular-busca"
+              data-id="${p.id}"
+              data-nome="${App.escapeHtml(p.nome)}"
+              data-placa="${App.escapeHtml(p.placa || '')}"
+              data-tel="${App.escapeHtml(p.telefone || '')}">
+              Vincular a evento
+            </button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  resultado.querySelectorAll('.btn-vincular-busca').forEach(btn => {
+    btn.addEventListener('click', function () {
+      App._abrirModalVincular({
+        id:    this.dataset.id,
+        nome:  this.dataset.nome,
+        placa: this.dataset.placa,
+        tel:   this.dataset.tel,
+      }, eventos);
+    });
+  });
+};
+
+/* ── Modal: vincular pessoa existente a novo evento ── */
+App._abrirModalVincular = function (pessoa, eventos) {
+  const modal     = document.getElementById('modalVincular');
+  const titulo    = document.getElementById('modalVincularNome');
+  const info      = document.getElementById('modalVincularInfo');
+  const selectEv  = document.getElementById('selectEventoVincular');
+  const btnCancel = document.getElementById('btnCancelarVincular');
+  const btnOk     = document.getElementById('btnConfirmarVincular');
+
+  if (!modal) return;
+
+  titulo.textContent = pessoa.nome;
+  info.textContent   = [
+    pessoa.placa ? 'Placa: ' + pessoa.placa : '',
+    pessoa.tel   ? 'Tel: '   + pessoa.tel   : '',
+  ].filter(Boolean).join('  ·  ') || 'Selecione o evento para vincular.';
+
+  selectEv.innerHTML = eventos.length
+    ? eventos.map(ev =>
+        `<option value="${ev.id}">${App.escapeHtml(ev.nome)} — ${App.formatDate(ev.data)}</option>`
+      ).join('')
+    : `<option value="">Nenhum evento cadastrado</option>`;
+
+  modal.classList.remove('hidden');
+  document.body.classList.add('modal-open');
+
+  const fechar = function () {
+    modal.classList.add('hidden');
+    document.body.classList.remove('modal-open');
+  };
+
+  btnCancel.onclick = fechar;
+  modal.onclick     = function (e) { if (e.target === modal) fechar(); };
+
+  btnOk.onclick = async function () {
+    const eventoId = selectEv.value;
+    if (!eventoId) {
+      App.showToast('Selecione um evento.', 'warning');
+      return;
     }
 
-    const { error } = await App.db
-      .from('pessoas')
-      .delete()
-      .eq('id', id);
+    App._setButtonLoading(btnOk, true, 'Vinculando…');
 
-    if (error) throw new Error(`Erro ao excluir convidado: ${error.message}`);
+    const jaVinculado = (App.state.presencas || []).some(
+      pr => pr.pessoa_id === pessoa.id && pr.evento_id === eventoId
+    );
 
-    await App.refreshAfterChange('pessoas');
-    App.showToast(`${pessoa.nome} foi excluído(a) com sucesso.`, 'success');
+    if (jaVinculado) {
+      App.showToast('Esta pessoa já está vinculada a esse evento.', 'warning');
+      App._setButtonLoading(btnOk, false);
+      return;
+    }
 
-  } catch (err) {
-    console.error('[People] Erro ao excluir pessoa:', err);
-    App.showToast(err.message || 'Não foi possível excluir o convidado.', 'error');
+    const nova = {
+      id:        App.createId(),
+      pessoa_id: pessoa.id,
+      evento_id: eventoId,
+    };
+
+    if (App.ensureSupabaseReady()) {
+      const { error } = await App.db.from('presencas').insert(nova);
+      if (error) {
+        App.showToast('Erro ao vincular: ' + error.message, 'error');
+        App._setButtonLoading(btnOk, false);
+        return;
+      }
+    }
+
+    App.state.presencas = App.state.presencas || [];
+    App.state.presencas.push(nova);
+
+    App.showToast('Pessoa vinculada ao evento com sucesso!', 'success');
+    App._setButtonLoading(btnOk, false);
+    fechar();
+    App.renderAll();
+  };
+};
+
+/* ── Modal: nova pessoa completa ── */
+App._abrirModalNovaPessoa = function (eventos) {
+  const modal     = document.getElementById('modalNovaPessoa');
+  const selectEv  = document.getElementById('selectEventoPessoa');
+  const btnCancel = document.getElementById('btnCancelarNovaPessoa');
+  const btnSalvar = document.getElementById('btnSalvarNovaPessoa');
+
+  if (!modal) return;
+
+  selectEv.innerHTML = eventos.length
+    ? eventos.map(ev =>
+        `<option value="${ev.id}">${App.escapeHtml(ev.nome)} — ${App.formatDate(ev.data)}</option>`
+      ).join('')
+    : `<option value="">Nenhum evento cadastrado</option>`;
+
+  modal.classList.remove('hidden');
+  document.body.classList.add('modal-open');
+
+  const fechar = function () {
+    modal.classList.add('hidden');
+    document.body.classList.remove('modal-open');
+  };
+
+  btnCancel.onclick = fechar;
+  modal.onclick     = function (e) { if (e.target === modal) fechar(); };
+
+  btnSalvar.onclick = async function () {
+    const nome  = document.getElementById('inputNomePessoa').value.trim();
+    const placa = App.normalizePlate(document.getElementById('inputPlacaPessoa').value);
+    const tel   = document.getElementById('inputTelPessoa').value.trim();
+    const obs   = document.getElementById('inputObsPessoa').value.trim();
+    const evId  = selectEv.value;
+
+    if (!nome) {
+      App.showToast('Informe o nome.', 'warning');
+      return;
+    }
+    if (!evId) {
+      App.showToast('Selecione um evento.', 'warning');
+      return;
+    }
+
+    App._setButtonLoading(btnSalvar, true, 'Salvando…');
+
+    /* Verifica se já existe pelo nome normalizado */
+    const existente = (App.state.pessoas || []).find(
+      p => App.normalizeText(p.nome) === App.normalizeText(nome)
+    );
+
+    let pessoaId;
+
+    if (existente) {
+      pessoaId = existente.id;
+      App.showToast('Cadastro existente reutilizado.', 'info');
+    } else {
+      const novaPessoa = {
+        id:          App.createId(),
+        nome,
+        placa:       placa || null,
+        telefone:    tel   || null,
+        observacoes: obs   || null,
+      };
+
+      if (App.ensureSupabaseReady()) {
+        const { error } = await App.db.from('pessoas').insert(novaPessoa);
+        if (error) {
+          App.showToast('Erro ao salvar: ' + error.message, 'error');
+          App._setButtonLoading(btnSalvar, false);
+          return;
+        }
+      }
+
+      App.state.pessoas = App.state.pessoas || [];
+      App.state.pessoas.push(novaPessoa);
+      pessoaId = novaPessoa.id;
+    }
+
+    /* Verifica se já está vinculada ao evento */
+    const jaVinculado = (App.state.presencas || []).some(
+      pr => pr.pessoa_id === pessoaId && pr.evento_id === evId
+    );
+
+    if (!jaVinculado) {
+      const novaPresenca = {
+        id:        App.createId(),
+        pessoa_id: pessoaId,
+        evento_id: evId,
+      };
+
+      if (App.ensureSupabaseReady()) {
+        const { error } = await App.db.from('presencas').insert(novaPresenca);
+        if (error) {
+          App.showToast('Erro ao vincular ao evento: ' + error.message, 'error');
+          App._setButtonLoading(btnSalvar, false);
+          return;
+        }
+      }
+
+      App.state.presencas = App.state.presencas || [];
+      App.state.presencas.push(novaPresenca);
+    }
+
+    App.showToast('Pessoa salva e vinculada ao evento!', 'success');
+    App._setButtonLoading(btnSalvar, false);
+    fechar();
+    App.renderAll();
+  };
+};
+
+/* ── Excluir pessoa ── */
+App._excluirPessoa = async function (id) {
+  const ok = await App.confirm('Remover esta pessoa da base?', 'Confirmar remoção');
+  if (!ok) return;
+
+  if (App.ensureSupabaseReady()) {
+    await App.db.from('presencas').delete().eq('pessoa_id', id);
+    const { error } = await App.db.from('pessoas').delete().eq('id', id);
+    if (error) {
+      App.showToast('Erro ao remover: ' + error.message, 'error');
+      return;
+    }
   }
+
+  App.state.pessoas  = (App.state.pessoas  || []).filter(p  => p.id !== id);
+  App.state.presencas = (App.state.presencas || []).filter(pr => pr.pessoa_id !== id);
+
+  App.showToast('Pessoa removida.', 'success');
+  App.renderAll();
 };
