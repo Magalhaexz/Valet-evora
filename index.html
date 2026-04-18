@@ -2,707 +2,20 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ÉVORA</title>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-  <style>
-    :root {
-      --bg: #070707;
-      --panel: #111111;
-      --panel-2: #161616;
-      --panel-3: #1d1d1d;
-      --text: #e9e0cf;
-      --text-soft: #d8c9aa;
-      --muted: #b29d75;
-      --gold: #b89d68;
-      --gold-2: #d7c3a0;
-      --line: rgba(184, 157, 104, 0.18);
-      --gold-soft: rgba(184, 157, 104, 0.06);
-      --danger-soft: rgba(184, 120, 120, 0.10);
-      --danger-line: rgba(184, 120, 120, 0.28);
-      --shadow: 0 18px 40px rgba(0, 0, 0, 0.38);
-      --radius: 20px;
-    }
-
-    * { box-sizing: border-box; }
-
-    html, body {
-      margin: 0;
-      padding: 0;
-      min-height: 100%;
-      background:
-        radial-gradient(circle at top left, rgba(184,157,104,0.04) 0%, transparent 28%),
-        radial-gradient(circle at bottom right, rgba(184,157,104,0.03) 0%, transparent 26%),
-        linear-gradient(180deg, #090909 0%, #050505 100%);
-      color: var(--text);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-
-    body { min-height: 100vh; }
-
-    .hidden { display: none !important; }
-
-    .auth-screen {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-    }
-
-    .auth-card {
-      width: 100%;
-      max-width: 420px;
-      border: 1px solid var(--line);
-      border-radius: 24px;
-      background: linear-gradient(180deg, #101010 0%, #171717 100%);
-      box-shadow: var(--shadow);
-      padding: 30px 24px;
-    }
-
-    .auth-card h1 {
-      margin: 0 0 8px;
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: 38px;
-      color: var(--gold-2);
-      text-align: center;
-      letter-spacing: 0.06em;
-    }
-
-    .auth-subtitle {
-      margin: 0 0 26px;
-      text-align: center;
-      color: var(--muted);
-      font-size: 12px;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-    }
-
-    .auth-form {
-      display: grid;
-      gap: 16px;
-    }
-
-    .auth-form .btn {
-      width: 100%;
-      margin-top: 4px;
-    }
-
-    .auth-note {
-      margin-top: 18px;
-      padding: 14px 16px;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      background: rgba(184,157,104,0.04);
-      color: var(--text-soft);
-      font-size: 13px;
-      line-height: 1.6;
-      text-align: center;
-    }
-
-    .app {
-      display: grid;
-      grid-template-columns: 260px 1fr;
-      min-height: 100vh;
-    }
-
-    .sidebar {
-      background: linear-gradient(180deg, #0a0a0a 0%, #111111 100%);
-      border-right: 1px solid var(--line);
-      padding: 26px 18px;
-      position: sticky;
-      top: 0;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      gap: 22px;
-    }
-
-    .brand {
-      border: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(184,157,104,0.05) 0%, rgba(184,157,104,0.02) 100%);
-      border-radius: 24px;
-      padding: 22px 18px;
-      box-shadow: var(--shadow);
-    }
-
-    .brand h1 {
-      margin: 0;
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: 34px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      color: var(--gold-2);
-    }
-
-    .brand-subtitle {
-      margin-top: 10px;
-      font-size: 12px;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-
-    .menu {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .menu button {
-      appearance: none;
-      border: 1px solid transparent;
-      background: transparent;
-      color: var(--text);
-      text-align: left;
-      border-radius: 16px;
-      padding: 14px 16px;
-      cursor: pointer;
-      font-size: 15px;
-      font-weight: 700;
-      transition: 0.2s ease;
-      letter-spacing: 0.01em;
-    }
-
-    .menu button.active,
-    .menu button:hover {
-      background: var(--gold-soft);
-      border-color: var(--line);
-      color: var(--gold-2);
-      transform: translateX(2px);
-    }
-
-    .sidebar-footer {
-      margin-top: auto;
-      padding: 14px;
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      background: rgba(184,157,104,0.03);
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.6;
-    }
-
-    .content { padding: 28px; }
-
-    .mobile-menu-toggle {
-      display: none;
-      margin-bottom: 16px;
-    }
-
-    .topbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-    }
-
-    .headline h2 {
-      margin: 0;
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: 46px;
-      line-height: 1;
-      color: var(--gold-2);
-      letter-spacing: 0.06em;
-      font-weight: 700;
-    }
-
-    .top-actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-
-    .btn,
-    .btn-secondary,
-    .btn-danger {
-      appearance: none;
-      border-radius: 14px;
-      padding: 12px 18px;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: 0.2s ease;
-    }
-
-    .btn {
-      border: 1px solid rgba(184,157,104,0.35);
-      background: linear-gradient(180deg, #c7ae79 0%, #b19158 100%);
-      color: #111111;
-      box-shadow: var(--shadow);
-    }
-
-    .btn:hover {
-      transform: translateY(-1px);
-      filter: brightness(1.02);
-    }
-
-    .btn-secondary {
-      border: 1px solid var(--line);
-      background: var(--panel-2);
-      color: var(--gold-2);
-    }
-
-    .btn-secondary:hover {
-      background: #1b1b1b;
-    }
-
-    .btn-danger {
-      border: 1px solid var(--danger-line);
-      background: var(--danger-soft);
-      color: #dab1b1;
-    }
-
-    .btn-danger:hover {
-      background: rgba(184,120,120,0.16);
-    }
-
-    .user-badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 12px 14px;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      background: var(--panel-2);
-      color: var(--gold-2);
-      font-size: 13px;
-      font-weight: 700;
-    }
-
-    .shell {
-      display: grid;
-      gap: 20px;
-    }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 16px;
-    }
-
-    .card {
-      background: linear-gradient(180deg, #101010 0%, #151515 100%);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 20px;
-    }
-
-    .stat-label {
-      font-size: 12px;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 10px;
-    }
-
-    .stat-value {
-      font-size: 36px;
-      font-weight: 800;
-      color: var(--gold-2);
-      line-height: 1;
-      margin-bottom: 10px;
-    }
-
-    .stat-note {
-      color: var(--text-soft);
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 20px;
-    }
-
-    .panel-grid {
-      display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 20px;
-    }
-
-    .section-title {
-      margin: 0 0 8px;
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: 28px;
-      color: var(--gold-2);
-    }
-
-    .section-subtitle {
-      margin: 0 0 20px;
-      color: var(--text-soft);
-      line-height: 1.6;
-      font-size: 15px;
-    }
-
-    .agenda-list,
-    .list,
-    .attendees,
-    .flow-list {
-      display: grid;
-      gap: 12px;
-    }
-
-    .agenda-item,
-    .list-item,
-    .attendee,
-    .flow-step,
-    .history-card {
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: linear-gradient(180deg, #111111 0%, #171717 100%);
-    }
-
-    .agenda-item,
-    .list-item,
-    .attendee,
-    .flow-step {
-      padding: 18px;
-    }
-
-    .agenda-item h4,
-    .list-item h4,
-    .history-top h4,
-    .flow-step h4 {
-      margin: 0 0 6px;
-      color: var(--gold-2);
-    }
-
-    .agenda-item p,
-    .list-item p,
-    .attendee span,
-    .flow-step p {
-      margin: 0;
-      color: var(--text-soft);
-      line-height: 1.6;
-      font-size: 14px;
-    }
-
-    .agenda-item {
-      display: flex;
-      justify-content: space-between;
-      gap: 14px;
-      align-items: flex-start;
-    }
-
-    .agenda-date {
-      white-space: nowrap;
-      padding: 8px 12px;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-      background: rgba(184,157,104,0.07);
-      color: var(--gold-2);
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .empty {
-      text-align: center;
-      padding: 42px 18px;
-      color: var(--text-soft);
-      border: 1px dashed var(--line);
-      border-radius: 18px;
-      background: rgba(184,157,104,0.02);
-    }
-
-    .chips {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-top: 10px;
-    }
-
-    .chip {
-      background: rgba(184,157,104,0.07);
-      color: var(--gold-2);
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 6px 10px;
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .toolbar {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      align-items: center;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-    }
-
-    .search {
-      width: 100%;
-      max-width: 340px;
-    }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
-    }
-
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .field.full { grid-column: 1 / -1; }
-
-    label {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--gold-2);
-    }
-
-    input, select, textarea {
-      width: 100%;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      background: #0c0c0c;
-      padding: 14px;
-      font-size: 15px;
-      color: var(--text);
-      outline: none;
-      transition: 0.2s ease;
-    }
-
-    input::placeholder,
-    textarea::placeholder {
-      color: #8c7b5a;
-    }
-
-    input:focus, select:focus, textarea:focus {
-      border-color: rgba(184,157,104,0.5);
-      box-shadow: 0 0 0 4px rgba(184,157,104,0.10);
-    }
-
-    textarea {
-      resize: vertical;
-      min-height: 108px;
-    }
-
-    .inline-actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 20px;
-    }
-
-    .hint {
-      padding: 14px 16px;
-      border-radius: 16px;
-      background: rgba(184,157,104,0.04);
-      color: var(--text-soft);
-      font-size: 14px;
-      line-height: 1.6;
-      border: 1px solid var(--line);
-      margin-top: 18px;
-    }
-
-    .history-card {
-      padding: 20px;
-      display: grid;
-      gap: 16px;
-    }
-
-    .history-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      align-items: flex-start;
-    }
-
-    .event-date {
-      white-space: nowrap;
-      padding: 8px 12px;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-      background: rgba(184,157,104,0.07);
-      color: var(--gold-2);
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .subsection-title {
-      margin: 0 0 10px;
-      color: var(--gold-2);
-      font-weight: 700;
-      font-size: 15px;
-    }
-
-    .attendee {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      align-items: flex-start;
-    }
-
-    .attendee strong {
-      display: block;
-      color: var(--gold-2);
-      margin-bottom: 4px;
-    }
-
-    .flow-step {
-      display: flex;
-      justify-content: space-between;
-      gap: 14px;
-      align-items: flex-start;
-    }
-
-    #view-dashboard {
-      display: grid;
-      gap: 28px;
-    }
-
-    #view-dashboard .stats {
-      gap: 22px;
-      margin-bottom: 2px;
-    }
-
-    #view-dashboard .dashboard-grid {
-      gap: 24px;
-      align-items: start;
-    }
-
-    #view-dashboard .card {
-      padding: 24px;
-    }
-
-    #view-dashboard .section-title {
-      margin-bottom: 10px;
-    }
-
-    #view-dashboard .section-subtitle {
-      margin: 0 0 24px;
-      line-height: 1.7;
-    }
-
-    #view-dashboard .stat-label {
-      margin-bottom: 12px;
-    }
-
-    #view-dashboard .stat-value {
-      margin-bottom: 14px;
-    }
-
-    #view-dashboard .agenda-list {
-      gap: 16px;
-    }
-
-    #view-dashboard .agenda-item {
-      padding: 20px;
-    }
-
-    #view-dashboard .agenda-item h4 {
-      margin-bottom: 8px;
-    }
-
-    #view-dashboard .agenda-item p + p {
-      margin-top: 8px;
-    }
-
-    @media (max-width: 1100px) {
-      .stats {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .dashboard-grid,
-      .panel-grid {
-        grid-template-columns: 1fr;
-      }
-
-      #view-dashboard .stats {
-        gap: 18px;
-      }
-
-      #view-dashboard .dashboard-grid {
-        gap: 20px;
-      }
-
-      #view-dashboard {
-        gap: 22px;
-      }
-    }
-
-    @media (max-width: 860px) {
-      .app {
-        grid-template-columns: 1fr;
-      }
-
-      .sidebar {
-        position: fixed;
-        z-index: 20;
-        width: 260px;
-        transform: translateX(-100%);
-        transition: 0.25s ease;
-      }
-
-      .sidebar.open {
-        transform: translateX(0);
-      }
-
-      .content {
-        padding: 18px;
-      }
-
-      .mobile-menu-toggle {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-      }
-
-      .headline h2 {
-        font-size: 34px;
-      }
-
-      .topbar {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-    }
-
-    @media (max-width: 720px) {
-      .stats,
-      .form-grid {
-        grid-template-columns: 1fr;
-      }
-
-      #view-dashboard {
-        gap: 18px;
-      }
-
-      #view-dashboard .card {
-        padding: 20px;
-      }
-
-      .agenda-item,
-      .list-item,
-      .attendee,
-      .flow-step,
-      .history-top {
-        flex-direction: column;
-      }
-
-      .top-actions {
-        width: 100%;
-      }
-
-      .top-actions button,
-      .top-actions .user-badge {
-        flex: 1 1 100%;
-      }
-    }
-  </style>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  />
+  <meta name="theme-color" content="#0b0b0b" />
+  <meta
+    name="description"
+    content="ÉVORA - sistema de gestão de eventos, convidados e equipe para operação de valet."
+  />
+
+  <title>ÉVORA | Portaria Valet</title>
+
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
   <div id="authScreen" class="auth-screen">
@@ -710,49 +23,70 @@
       <h1>ÉVORA</h1>
       <p class="auth-subtitle">PORTARIA valet</p>
 
-      <form id="loginForm" class="auth-form">
+      <form id="loginForm" class="auth-form" autocomplete="on">
         <div class="field">
           <label for="loginEmail">E-mail</label>
-          <input id="loginEmail" type="email" placeholder="seuemail@exemplo.com" required />
+          <input
+            id="loginEmail"
+            name="email"
+            type="email"
+            placeholder="seuemail@exemplo.com"
+            autocomplete="email"
+            required
+          />
         </div>
 
         <div class="field">
           <label for="loginPassword">Senha</label>
-          <input id="loginPassword" type="password" placeholder="Digite sua senha" required />
+          <input
+            id="loginPassword"
+            name="password"
+            type="password"
+            placeholder="Digite sua senha"
+            autocomplete="current-password"
+            required
+          />
         </div>
 
         <button class="btn" type="submit">Entrar</button>
       </form>
 
       <div class="auth-note">
-        Use a conta criada no Supabase para acessar a operação.
+        Use a conta cadastrada no Supabase para acessar a operação.
       </div>
     </div>
   </div>
 
   <div id="appShell" class="app hidden">
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar" id="sidebar" aria-label="Menu lateral">
       <div class="brand">
         <h1>ÉVORA</h1>
         <div class="brand-subtitle">PORTARIA valet</div>
       </div>
 
-      <nav class="menu">
-        <button class="nav-link active" data-view="dashboard">Início</button>
-        <button class="nav-link" data-view="fluxo">Fluxo</button>
-        <button class="nav-link" data-view="eventos">Eventos</button>
-        <button class="nav-link" data-view="pessoas">Pessoas</button>
-        <button class="nav-link" data-view="funcionarios">Funcionários</button>
-        <button class="nav-link" data-view="historico">Histórico</button>
+      <nav class="menu" aria-label="Navegação principal">
+        <button class="nav-link active" type="button" data-view="dashboard">Início</button>
+        <button class="nav-link" type="button" data-view="fluxo">Fluxo</button>
+        <button class="nav-link" type="button" data-view="eventos">Eventos</button>
+        <button class="nav-link" type="button" data-view="pessoas">Pessoas</button>
+        <button class="nav-link" type="button" data-view="funcionarios">Funcionários</button>
+        <button class="nav-link" type="button" data-view="historico">Histórico</button>
       </nav>
 
       <div class="sidebar-footer">
-        Versão online com login e banco compartilhado no Supabase.
+        Plataforma online com autenticação, agenda compartilhada e exportação em Excel.
       </div>
     </aside>
 
     <main class="content">
-      <button class="btn-secondary mobile-menu-toggle" id="mobileMenuBtn">☰ Menu</button>
+      <button
+        class="btn-secondary mobile-menu-toggle"
+        id="mobileMenuBtn"
+        type="button"
+        aria-label="Abrir menu"
+      >
+        ☰ Menu
+      </button>
 
       <div class="topbar">
         <div class="headline">
@@ -761,9 +95,9 @@
 
         <div class="top-actions">
           <span id="currentUserEmail" class="user-badge hidden"></span>
-          <button class="btn-secondary hidden" id="btnLogout">Sair</button>
-          <button class="btn-secondary" id="btnExportar">Exportar Excel</button>
-          <button class="btn-danger" id="btnLimparTudo">Limpar base</button>
+          <button class="btn-secondary hidden" id="btnLogout" type="button">Sair</button>
+          <button class="btn-secondary" id="btnExportar" type="button">Exportar Excel</button>
+          <button class="btn-danger" id="btnLimparTudo" type="button">Limpar base</button>
         </div>
       </div>
 
@@ -843,7 +177,7 @@
               <div class="flow-step">
                 <div>
                   <h4>4. Consulte o histórico</h4>
-                  <p>Na aba <strong>Histórico</strong>, veja convidados e funcionários de cada evento.</p>
+                  <p>Na aba <strong>Histórico</strong>, visualize convidados e equipe de cada evento.</p>
                 </div>
                 <span class="chip">Histórico</span>
               </div>
@@ -861,7 +195,12 @@
                 <div class="form-grid">
                   <div class="field full">
                     <label for="eventoNome">Nome do evento</label>
-                    <input id="eventoNome" type="text" placeholder="Ex.: Jantar corporativo" required />
+                    <input
+                      id="eventoNome"
+                      type="text"
+                      placeholder="Ex.: Jantar corporativo"
+                      required
+                    />
                   </div>
 
                   <div class="field">
@@ -871,12 +210,19 @@
 
                   <div class="field">
                     <label for="eventoLocal">Local</label>
-                    <input id="eventoLocal" type="text" placeholder="Ex.: Salão principal" />
+                    <input
+                      id="eventoLocal"
+                      type="text"
+                      placeholder="Ex.: Salão principal"
+                    />
                   </div>
 
                   <div class="field full">
                     <label for="eventoObs">Observações</label>
-                    <textarea id="eventoObs" placeholder="Informações adicionais do evento"></textarea>
+                    <textarea
+                      id="eventoObs"
+                      placeholder="Informações adicionais do evento"
+                    ></textarea>
                   </div>
                 </div>
 
@@ -893,8 +239,14 @@
                   <h3 class="section-title" style="font-size: 28px; margin-bottom: 4px;">Agenda salva</h3>
                   <p class="section-subtitle" style="margin: 0;">Eventos já cadastrados.</p>
                 </div>
-                <input class="search" id="buscaEventos" type="text" placeholder="Buscar evento" />
+                <input
+                  class="search"
+                  id="buscaEventos"
+                  type="text"
+                  placeholder="Buscar evento"
+                />
               </div>
+
               <div id="listaEventos" class="list"></div>
             </div>
           </div>
@@ -910,22 +262,41 @@
                 <div class="form-grid">
                   <div class="field full">
                     <label for="pessoaNome">Nome do convidado</label>
-                    <input id="pessoaNome" type="text" placeholder="Ex.: Maria da Silva" required />
+                    <input
+                      id="pessoaNome"
+                      type="text"
+                      placeholder="Ex.: Maria da Silva"
+                      required
+                    />
                   </div>
 
                   <div class="field">
                     <label for="pessoaPlaca">Placa do veículo</label>
-                    <input id="pessoaPlaca" type="text" placeholder="ABC1D23" required />
+                    <input
+                      id="pessoaPlaca"
+                      type="text"
+                      placeholder="ABC1D23"
+                      required
+                    />
                   </div>
 
                   <div class="field">
                     <label for="pessoaTelefone">Telefone</label>
-                    <input id="pessoaTelefone" type="tel" placeholder="(62) 99999-9999" required />
+                    <input
+                      id="pessoaTelefone"
+                      type="tel"
+                      placeholder="(62) 99999-9999"
+                      required
+                    />
                   </div>
 
                   <div class="field">
                     <label for="pessoaEmail">E-mail</label>
-                    <input id="pessoaEmail" type="email" placeholder="Opcional" />
+                    <input
+                      id="pessoaEmail"
+                      type="email"
+                      placeholder="Opcional"
+                    />
                   </div>
 
                   <div class="field">
@@ -943,7 +314,7 @@
               </form>
 
               <div class="hint">
-                Se a pessoa já existir na base, o sistema reaproveita o cadastro e só registra a presença no evento escolhido.
+                Se a pessoa já existir na base, o sistema reaproveita o cadastro e apenas registra a presença no evento escolhido.
               </div>
             </div>
 
@@ -953,8 +324,14 @@
                   <h3 class="section-title" style="font-size: 28px; margin-bottom: 4px;">Base de convidados</h3>
                   <p class="section-subtitle" style="margin: 0;">Convidados já cadastrados.</p>
                 </div>
-                <input class="search" id="buscaPessoas" type="text" placeholder="Buscar por nome, placa ou telefone" />
+                <input
+                  class="search"
+                  id="buscaPessoas"
+                  type="text"
+                  placeholder="Buscar por nome, placa ou telefone"
+                />
               </div>
+
               <div id="listaPessoas" class="list"></div>
             </div>
           </div>
@@ -970,17 +347,31 @@
                 <div class="form-grid">
                   <div class="field full">
                     <label for="funcionarioNome">Nome do funcionário</label>
-                    <input id="funcionarioNome" type="text" placeholder="Ex.: João Almeida" required />
+                    <input
+                      id="funcionarioNome"
+                      type="text"
+                      placeholder="Ex.: João Almeida"
+                      required
+                    />
                   </div>
 
                   <div class="field">
                     <label for="funcionarioCargo">Cargo / função</label>
-                    <input id="funcionarioCargo" type="text" placeholder="Ex.: Manobrista" required />
+                    <input
+                      id="funcionarioCargo"
+                      type="text"
+                      placeholder="Ex.: Manobrista"
+                      required
+                    />
                   </div>
 
                   <div class="field">
                     <label for="funcionarioTelefone">Telefone</label>
-                    <input id="funcionarioTelefone" type="tel" placeholder="Opcional" />
+                    <input
+                      id="funcionarioTelefone"
+                      type="tel"
+                      placeholder="Opcional"
+                    />
                   </div>
 
                   <div class="field">
@@ -992,7 +383,10 @@
 
                   <div class="field full">
                     <label for="funcionarioObs">Observações</label>
-                    <textarea id="funcionarioObs" placeholder="Ex.: responsável pela recepção, líder da equipe, apoio externo"></textarea>
+                    <textarea
+                      id="funcionarioObs"
+                      placeholder="Ex.: responsável pela recepção, líder da equipe, apoio externo"
+                    ></textarea>
                   </div>
                 </div>
 
@@ -1013,8 +407,14 @@
                   <h3 class="section-title" style="font-size: 28px; margin-bottom: 4px;">Base de funcionários</h3>
                   <p class="section-subtitle" style="margin: 0;">Equipe já cadastrada.</p>
                 </div>
-                <input class="search" id="buscaFuncionarios" type="text" placeholder="Buscar por nome, cargo ou telefone" />
+                <input
+                  class="search"
+                  id="buscaFuncionarios"
+                  type="text"
+                  placeholder="Buscar por nome, cargo ou telefone"
+                />
               </div>
+
               <div id="listaFuncionarios" class="list"></div>
             </div>
           </div>
@@ -1025,10 +425,19 @@
             <div class="toolbar">
               <div>
                 <h3 class="section-title">Histórico</h3>
-                <p class="section-subtitle" style="margin-bottom: 0;">Eventos com convidados e funcionários vinculados.</p>
+                <p class="section-subtitle" style="margin-bottom: 0;">
+                  Eventos com convidados e funcionários vinculados.
+                </p>
               </div>
-              <input class="search" id="buscaHistorico" type="text" placeholder="Buscar evento, convidado ou funcionário" />
+
+              <input
+                class="search"
+                id="buscaHistorico"
+                type="text"
+                placeholder="Buscar evento, convidado ou funcionário"
+              />
             </div>
+
             <div id="listaHistorico" class="list"></div>
           </div>
         </section>
@@ -1036,1105 +445,22 @@
     </main>
   </div>
 
-  <script>
-    const SUPABASE_URL = 'https://yccvpwjxfstjbvuvrgch.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljY3Zwd2p4ZnN0amJ2dXZyZ2NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NTI1NzIsImV4cCI6MjA5MjAyODU3Mn0.QwN4nQarFcPWCiKcMioNN5grraQmxKpm9frakXY2q3U';
-
-    const db = isSupabaseConfigured()
-      ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-      : null;
-
-    function isSupabaseConfigured() {
-      return (
-        SUPABASE_URL &&
-        SUPABASE_ANON_KEY &&
-        !SUPABASE_URL.includes('COLE_AQUI') &&
-        !SUPABASE_ANON_KEY.includes('COLE_AQUI')
-      );
-    }
-
-    function ensureSupabaseReady(showAlert = true) {
-      const ready = !!db;
-      if (!ready && showAlert) {
-        alert('Preencha a SUPABASE_URL e a SUPABASE_ANON_KEY no código antes de usar a versão online.');
-      }
-      return ready;
-    }
-
-    const state = {
-      eventos: [],
-      pessoas: [],
-      presencas: [],
-      funcionarios: [],
-      funcionariosEventos: []
-    };
-
-    const els = {
-      sidebar: document.getElementById('sidebar'),
-      mobileMenuBtn: document.getElementById('mobileMenuBtn'),
-      btnExportar: document.getElementById('btnExportar'),
-      btnLimparTudo: document.getElementById('btnLimparTudo'),
-
-      formEvento: document.getElementById('formEvento'),
-      formPessoa: document.getElementById('formPessoa'),
-      formFuncionario: document.getElementById('formFuncionario'),
-
-      eventoNome: document.getElementById('eventoNome'),
-      eventoData: document.getElementById('eventoData'),
-      eventoLocal: document.getElementById('eventoLocal'),
-      eventoObs: document.getElementById('eventoObs'),
-
-      pessoaNome: document.getElementById('pessoaNome'),
-      pessoaPlaca: document.getElementById('pessoaPlaca'),
-      pessoaTelefone: document.getElementById('pessoaTelefone'),
-      pessoaEmail: document.getElementById('pessoaEmail'),
-      pessoaEvento: document.getElementById('pessoaEvento'),
-
-      funcionarioNome: document.getElementById('funcionarioNome'),
-      funcionarioCargo: document.getElementById('funcionarioCargo'),
-      funcionarioTelefone: document.getElementById('funcionarioTelefone'),
-      funcionarioEvento: document.getElementById('funcionarioEvento'),
-      funcionarioObs: document.getElementById('funcionarioObs'),
-
-      buscaEventos: document.getElementById('buscaEventos'),
-      buscaPessoas: document.getElementById('buscaPessoas'),
-      buscaFuncionarios: document.getElementById('buscaFuncionarios'),
-      buscaHistorico: document.getElementById('buscaHistorico'),
-
-      listaEventos: document.getElementById('listaEventos'),
-      listaPessoas: document.getElementById('listaPessoas'),
-      listaFuncionarios: document.getElementById('listaFuncionarios'),
-      listaHistorico: document.getElementById('listaHistorico'),
-      listaAgendaHoje: document.getElementById('listaAgendaHoje'),
-      listaProximosEventos: document.getElementById('listaProximosEventos'),
-
-      statEventos: document.getElementById('statEventos'),
-      statEventosHoje: document.getElementById('statEventosHoje'),
-      statProximos: document.getElementById('statProximos'),
-      statFuncionarios: document.getElementById('statFuncionarios'),
-
-      btnLimparEvento: document.getElementById('btnLimparEvento'),
-      btnLimparPessoa: document.getElementById('btnLimparPessoa'),
-      btnLimparFuncionario: document.getElementById('btnLimparFuncionario'),
-
-      navLinks: document.querySelectorAll('.nav-link'),
-      views: {
-        dashboard: document.getElementById('view-dashboard'),
-        fluxo: document.getElementById('view-fluxo'),
-        eventos: document.getElementById('view-eventos'),
-        pessoas: document.getElementById('view-pessoas'),
-        funcionarios: document.getElementById('view-funcionarios'),
-        historico: document.getElementById('view-historico')
-      }
-    };
-
-    const authEls = {
-      authScreen: document.getElementById('authScreen'),
-      appShell: document.getElementById('appShell'),
-      loginForm: document.getElementById('loginForm'),
-      loginEmail: document.getElementById('loginEmail'),
-      loginPassword: document.getElementById('loginPassword'),
-      btnLogout: document.getElementById('btnLogout'),
-      currentUserEmail: document.getElementById('currentUserEmail')
-    };
-
-    let currentUser = null;
-    let refreshTimer = null;
-
-    init();
-
-    async function init() {
-      bindEvents();
-      renderAll();
-      await bootstrapAuth();
-      setView('dashboard');
-    }
-
-    function bindEvents() {
-      els.mobileMenuBtn.addEventListener('click', () => {
-        els.sidebar.classList.toggle('open');
-      });
-
-      els.navLinks.forEach(btn => {
-        btn.addEventListener('click', () => setView(btn.dataset.view));
-      });
-
-      els.formEvento.addEventListener('submit', handleSaveEvent);
-      els.formPessoa.addEventListener('submit', handleSavePerson);
-      els.formFuncionario.addEventListener('submit', handleSaveEmployee);
-
-      els.btnLimparEvento.addEventListener('click', () => els.formEvento.reset());
-      els.btnLimparPessoa.addEventListener('click', () => els.formPessoa.reset());
-      els.btnLimparFuncionario.addEventListener('click', () => els.formFuncionario.reset());
-
-      els.buscaEventos.addEventListener('input', renderEventList);
-      els.buscaPessoas.addEventListener('input', renderPeopleList);
-      els.buscaFuncionarios.addEventListener('input', renderEmployeeList);
-      els.buscaHistorico.addEventListener('input', renderHistory);
-
-      els.btnExportar.addEventListener('click', exportExcel);
-      els.btnLimparTudo.addEventListener('click', clearAllData);
-
-      authEls.loginForm.addEventListener('submit', handleLogin);
-      authEls.btnLogout.addEventListener('click', handleLogout);
-
-      window.addEventListener('focus', async () => {
-        if (currentUser) {
-          await loadAllData();
-          renderAll();
-        }
-      });
-    }
-
-    function setView(view) {
-      Object.entries(els.views).forEach(([key, section]) => {
-        section.classList.toggle('hidden', key !== view);
-      });
-
-      els.navLinks.forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.view === view);
-      });
-
-      els.sidebar.classList.remove('open');
-    }
-
-    async function bootstrapAuth() {
-      if (!ensureSupabaseReady(false)) return;
-
-      const { data, error } = await db.auth.getSession();
-
-      if (error) {
-        console.error(error);
-        alert('Erro ao iniciar autenticação.');
-        return;
-      }
-
-      await applySession(data.session);
-
-      db.auth.onAuthStateChange(async (_event, session) => {
-        await applySession(session);
-      });
-    }
-
-    async function applySession(session) {
-      currentUser = session?.user || null;
-      const logged = !!currentUser;
-
-      authEls.authScreen.classList.toggle('hidden', logged);
-      authEls.appShell.classList.toggle('hidden', !logged);
-      authEls.btnLogout.classList.toggle('hidden', !logged);
-      authEls.currentUserEmail.classList.toggle('hidden', !logged);
-
-      if (logged) {
-        authEls.currentUserEmail.textContent = currentUser.email || 'Usuário';
-        await loadAllData();
-        renderAll();
-        startAutoRefresh();
-      } else {
-        stopAutoRefresh();
-        clearState();
-        renderAll();
-      }
-    }
-
-    async function handleLogin(e) {
-      e.preventDefault();
-      if (!ensureSupabaseReady()) return;
-
-      const email = authEls.loginEmail.value.trim();
-      const password = authEls.loginPassword.value;
-
-      if (!email || !password) {
-        alert('Preencha e-mail e senha.');
-        return;
-      }
-
-      const { error } = await db.auth.signInWithPassword({ email, password });
-
-      if (error) {
-        console.error(error);
-        alert('Login inválido. Verifique e-mail e senha.');
-        return;
-      }
-
-      authEls.loginForm.reset();
-    }
-
-    async function handleLogout() {
-      if (!ensureSupabaseReady()) return;
-
-      const { error } = await db.auth.signOut();
-      if (error) {
-        console.error(error);
-        alert('Erro ao sair.');
-      }
-    }
-
-    function startAutoRefresh() {
-      stopAutoRefresh();
-
-      refreshTimer = setInterval(async () => {
-        if (!currentUser) return;
-        await loadAllData();
-        renderAll();
-      }, 8000);
-    }
-
-    function stopAutoRefresh() {
-      if (refreshTimer) {
-        clearInterval(refreshTimer);
-        refreshTimer = null;
-      }
-    }
-
-    function clearState() {
-      state.eventos = [];
-      state.pessoas = [];
-      state.presencas = [];
-      state.funcionarios = [];
-      state.funcionariosEventos = [];
-    }
-
-    async function loadAllData() {
-      try {
-        const [
-          eventosRes,
-          pessoasRes,
-          presencasRes,
-          funcionariosRes,
-          funcionariosEventosRes
-        ] = await Promise.all([
-          db.from('eventos').select('*'),
-          db.from('pessoas').select('*'),
-          db.from('presencas').select('*'),
-          db.from('funcionarios').select('*'),
-          db.from('funcionarios_eventos').select('*')
-        ]);
-
-        const errors = [
-          eventosRes.error,
-          pessoasRes.error,
-          presencasRes.error,
-          funcionariosRes.error,
-          funcionariosEventosRes.error
-        ].filter(Boolean);
-
-        if (errors.length) {
-          throw new Error(errors.map(err => err.message).join(' | '));
-        }
-
-        state.eventos = eventosRes.data || [];
-        state.pessoas = pessoasRes.data || [];
-        state.presencas = presencasRes.data || [];
-        state.funcionarios = funcionariosRes.data || [];
-        state.funcionariosEventos = funcionariosEventosRes.data || [];
-      } catch (error) {
-        console.error('Erro ao carregar dados do Supabase:', error);
-        alert('Não foi possível carregar os dados online. Verifique a configuração do Supabase, as tabelas e as policies.');
-      }
-    }
-
-    async function refreshAfterChange(viewToOpen) {
-      await loadAllData();
-      renderAll();
-      if (viewToOpen) setView(viewToOpen);
-    }
-
-    async function handleSaveEvent(e) {
-      e.preventDefault();
-      if (!ensureSupabaseReady()) return;
-
-      const evento = {
-        id: createId(),
-        nome: els.eventoNome.value.trim(),
-        data_realizacao: els.eventoData.value,
-        local: els.eventoLocal.value.trim(),
-        observacoes: els.eventoObs.value.trim(),
-        criado_em: new Date().toISOString()
-      };
-
-      if (!evento.nome || !evento.data_realizacao) {
-        alert('Preencha o nome e a data do evento.');
-        return;
-      }
-
-      const { error } = await db.from('eventos').insert([evento]);
-
-      if (error) {
-        console.error(error);
-        alert('Erro ao salvar evento.');
-        return;
-      }
-
-      els.formEvento.reset();
-      await refreshAfterChange('eventos');
-      alert('Evento cadastrado com sucesso.');
-    }
-
-    async function handleSavePerson(e) {
-      e.preventDefault();
-      if (!ensureSupabaseReady()) return;
-
-      const eventoId = els.pessoaEvento.value;
-      if (!eventoId) {
-        alert('Selecione o evento para vincular a pessoa.');
-        return;
-      }
-
-      const nome = els.pessoaNome.value.trim();
-      const placa = normalizePlate(els.pessoaPlaca.value);
-      const telefone = els.pessoaTelefone.value.trim();
-      const email = els.pessoaEmail.value.trim();
-
-      if (!nome || !placa || !telefone) {
-        alert('Preencha nome, placa e telefone.');
-        return;
-      }
-
-      let pessoa = state.pessoas.find(
-        p => normalizePlate(p.placa) === placa || p.telefone === telefone
-      );
-
-      if (pessoa) {
-        const { error: updateError } = await db
-          .from('pessoas')
-          .update({ nome, placa, telefone, email })
-          .eq('id', pessoa.id);
-
-        if (updateError) {
-          console.error(updateError);
-          alert('Erro ao atualizar convidado.');
-          return;
-        }
-      } else {
-        pessoa = {
-          id: createId(),
-          nome,
-          placa,
-          telefone,
-          email,
-          criado_em: new Date().toISOString()
-        };
-
-        const { error: insertError } = await db.from('pessoas').insert([pessoa]);
-        if (insertError) {
-          console.error(insertError);
-          alert('Erro ao salvar convidado.');
-          return;
-        }
-      }
-
-      const pessoaId = pessoa.id;
-
-      const jaRegistrado = state.presencas.some(
-        pr => pr.evento_id === eventoId && pr.pessoa_id === pessoaId
-      );
-
-      if (jaRegistrado) {
-        alert('Essa pessoa já está registrada nesse evento.');
-        return;
-      }
-
-      const { error: presencaError } = await db.from('presencas').insert([{
-        id: createId(),
-        evento_id: eventoId,
-        pessoa_id: pessoaId,
-        registrado_em: new Date().toISOString()
-      }]);
-
-      if (presencaError) {
-        console.error(presencaError);
-        alert('Erro ao vincular convidado ao evento.');
-        return;
-      }
-
-      els.formPessoa.reset();
-      await refreshAfterChange('pessoas');
-      alert('Pessoa cadastrada e vinculada ao evento com sucesso.');
-    }
-
-    async function handleSaveEmployee(e) {
-      e.preventDefault();
-      if (!ensureSupabaseReady()) return;
-
-      const eventoId = els.funcionarioEvento.value;
-      if (!eventoId) {
-        alert('Selecione o evento para vincular o funcionário.');
-        return;
-      }
-
-      const nome = els.funcionarioNome.value.trim();
-      const cargo = els.funcionarioCargo.value.trim();
-      const telefone = els.funcionarioTelefone.value.trim();
-      const observacoes = els.funcionarioObs.value.trim();
-
-      if (!nome || !cargo) {
-        alert('Preencha nome e cargo do funcionário.');
-        return;
-      }
-
-      let funcionario = state.funcionarios.find(
-        f =>
-          normalizeText(f.nome) === normalizeText(nome) &&
-          normalizeText(f.cargo) === normalizeText(cargo)
-      );
-
-      if (funcionario) {
-        const { error: updateError } = await db
-          .from('funcionarios')
-          .update({ telefone, observacoes })
-          .eq('id', funcionario.id);
-
-        if (updateError) {
-          console.error(updateError);
-          alert('Erro ao atualizar funcionário.');
-          return;
-        }
-      } else {
-        funcionario = {
-          id: createId(),
-          nome,
-          cargo,
-          telefone,
-          observacoes,
-          criado_em: new Date().toISOString()
-        };
-
-        const { error: insertError } = await db.from('funcionarios').insert([funcionario]);
-        if (insertError) {
-          console.error(insertError);
-          alert('Erro ao salvar funcionário.');
-          return;
-        }
-      }
-
-      const funcionarioId = funcionario.id;
-
-      const jaVinculado = state.funcionariosEventos.some(
-        fe => fe.evento_id === eventoId && fe.funcionario_id === funcionarioId
-      );
-
-      if (jaVinculado) {
-        alert('Esse funcionário já está vinculado a esse evento.');
-        return;
-      }
-
-      const { error: vinculoError } = await db.from('funcionarios_eventos').insert([{
-        id: createId(),
-        evento_id: eventoId,
-        funcionario_id: funcionarioId,
-        registrado_em: new Date().toISOString()
-      }]);
-
-      if (vinculoError) {
-        console.error(vinculoError);
-        alert('Erro ao vincular funcionário ao evento.');
-        return;
-      }
-
-      els.formFuncionario.reset();
-      await refreshAfterChange('funcionarios');
-      alert('Funcionário cadastrado e vinculado ao evento com sucesso.');
-    }
-
-    function renderAll() {
-      renderStats();
-      renderAgenda();
-      renderEventOptions();
-      renderEventList();
-      renderPeopleList();
-      renderEmployeeList();
-      renderHistory();
-    }
-
-    function renderStats() {
-      const hoje = getTodayISO();
-      const proximos = state.eventos.filter(ev => ev.data_realizacao > hoje);
-
-      els.statEventos.textContent = state.eventos.length;
-      els.statEventosHoje.textContent = state.eventos.filter(ev => ev.data_realizacao === hoje).length;
-      els.statProximos.textContent = proximos.length;
-      els.statFuncionarios.textContent = state.funcionarios.length;
-    }
-
-    function renderAgenda() {
-      const hoje = getTodayISO();
-
-      const eventosHoje = [...state.eventos]
-        .filter(ev => ev.data_realizacao === hoje)
-        .sort((a, b) => a.nome.localeCompare(b.nome));
-
-      const proximosEventos = [...state.eventos]
-        .filter(ev => ev.data_realizacao > hoje)
-        .sort((a, b) => a.data_realizacao.localeCompare(b.data_realizacao))
-        .slice(0, 8);
-
-      if (!eventosHoje.length) {
-        els.listaAgendaHoje.innerHTML = '<div class="empty">Nenhum evento cadastrado para hoje.</div>';
-      } else {
-        els.listaAgendaHoje.innerHTML = eventosHoje.map(ev => {
-          const convidados = getPeopleByEvent(ev.id).length;
-          const equipe = getEmployeesByEvent(ev.id).length;
-          return `
-            <div class="agenda-item">
-              <div>
-                <h4>${escapeHtml(ev.nome)}</h4>
-                <p>${ev.local ? `<strong>Local:</strong> ${escapeHtml(ev.local)} • ` : ''}<strong>Convidados:</strong> ${convidados} • <strong>Equipe:</strong> ${equipe}</p>
-                ${ev.observacoes ? `<p style="margin-top:8px;">${escapeHtml(ev.observacoes)}</p>` : ''}
-              </div>
-              <span class="agenda-date">Hoje</span>
-            </div>
-          `;
-        }).join('');
-      }
-
-      if (!proximosEventos.length) {
-        els.listaProximosEventos.innerHTML = '<div class="empty">Nenhum próximo evento cadastrado.</div>';
-      } else {
-        els.listaProximosEventos.innerHTML = proximosEventos.map(ev => {
-          const convidados = getPeopleByEvent(ev.id).length;
-          const equipe = getEmployeesByEvent(ev.id).length;
-          return `
-            <div class="agenda-item">
-              <div>
-                <h4>${escapeHtml(ev.nome)}</h4>
-                <p>${ev.local ? `<strong>Local:</strong> ${escapeHtml(ev.local)} • ` : ''}<strong>Convidados:</strong> ${convidados} • <strong>Equipe:</strong> ${equipe}</p>
-              </div>
-              <span class="agenda-date">${formatDate(ev.data_realizacao)}</span>
-            </div>
-          `;
-        }).join('');
-      }
-    }
-
-    function renderEventOptions() {
-      const pessoaAtual = els.pessoaEvento.value;
-      const funcionarioAtual = els.funcionarioEvento.value;
-
-      els.pessoaEvento.innerHTML = '<option value="">Selecione um evento</option>';
-      els.funcionarioEvento.innerHTML = '<option value="">Selecione um evento</option>';
-
-      [...state.eventos]
-        .sort((a, b) => a.data_realizacao.localeCompare(b.data_realizacao))
-        .forEach(evento => {
-          const texto = `${evento.nome} • ${formatDate(evento.data_realizacao)}`;
-
-          const optionPessoa = document.createElement('option');
-          optionPessoa.value = evento.id;
-          optionPessoa.textContent = texto;
-          els.pessoaEvento.appendChild(optionPessoa);
-
-          const optionFuncionario = document.createElement('option');
-          optionFuncionario.value = evento.id;
-          optionFuncionario.textContent = texto;
-          els.funcionarioEvento.appendChild(optionFuncionario);
-        });
-
-      if (pessoaAtual) els.pessoaEvento.value = pessoaAtual;
-      if (funcionarioAtual) els.funcionarioEvento.value = funcionarioAtual;
-    }
-
-    function renderEventList() {
-      const q = els.buscaEventos.value.trim().toLowerCase();
-
-      const eventos = [...state.eventos]
-        .sort((a, b) => a.data_realizacao.localeCompare(b.data_realizacao))
-        .filter(ev => {
-          const texto = `${ev.nome} ${ev.local} ${ev.observacoes} ${formatDate(ev.data_realizacao)}`.toLowerCase();
-          return texto.includes(q);
-        });
-
-      if (!eventos.length) {
-        els.listaEventos.innerHTML = '<div class="empty">Nenhum evento encontrado.</div>';
-        return;
-      }
-
-      els.listaEventos.innerHTML = eventos.map(ev => {
-        const convidados = getPeopleByEvent(ev.id).length;
-        const equipe = getEmployeesByEvent(ev.id).length;
-
-        return `
-          <div class="list-item">
-            <div>
-              <h4>${escapeHtml(ev.nome)}</h4>
-              <p><strong>Data:</strong> ${formatDate(ev.data_realizacao)}${ev.local ? ` • <strong>Local:</strong> ${escapeHtml(ev.local)}` : ''}</p>
-              ${ev.observacoes ? `<p style="margin-top:6px;">${escapeHtml(ev.observacoes)}</p>` : ''}
-              <div class="chips">
-                <span class="chip">${convidados} convidado(s)</span>
-                <span class="chip">${equipe} funcionário(s)</span>
-              </div>
-            </div>
-            <button class="btn-danger" onclick="deleteEvent('${ev.id}')">Excluir</button>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function renderPeopleList() {
-      const q = els.buscaPessoas.value.trim().toLowerCase();
-
-      const pessoas = [...state.pessoas].filter(p => {
-        const texto = `${p.nome} ${p.placa} ${p.telefone} ${p.email || ''}`.toLowerCase();
-        return texto.includes(q);
-      });
-
-      if (!pessoas.length) {
-        els.listaPessoas.innerHTML = '<div class="empty">Nenhuma pessoa encontrada.</div>';
-        return;
-      }
-
-      els.listaPessoas.innerHTML = pessoas.map(p => {
-        const participacoes = state.presencas.filter(pr => pr.pessoa_id === p.id).length;
-
-        return `
-          <div class="list-item">
-            <div>
-              <h4>${escapeHtml(p.nome)}</h4>
-              <p><strong>Placa:</strong> ${escapeHtml(p.placa)} • <strong>Telefone:</strong> ${escapeHtml(p.telefone)}</p>
-              <p>${p.email ? `<strong>E-mail:</strong> ${escapeHtml(p.email)}` : 'Sem e-mail cadastrado.'}</p>
-              <div class="chips">
-                <span class="chip">${participacoes} evento(s)</span>
-              </div>
-            </div>
-            <button class="btn-danger" onclick="deletePerson('${p.id}')">Excluir</button>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function renderEmployeeList() {
-      const q = els.buscaFuncionarios.value.trim().toLowerCase();
-
-      const funcionarios = [...state.funcionarios].filter(f => {
-        const texto = `${f.nome} ${f.cargo} ${f.telefone || ''} ${f.observacoes || ''}`.toLowerCase();
-        return texto.includes(q);
-      });
-
-      if (!funcionarios.length) {
-        els.listaFuncionarios.innerHTML = '<div class="empty">Nenhum funcionário encontrado.</div>';
-        return;
-      }
-
-      els.listaFuncionarios.innerHTML = funcionarios.map(f => {
-        const participacoes = state.funcionariosEventos.filter(fe => fe.funcionario_id === f.id).length;
-
-        return `
-          <div class="list-item">
-            <div>
-              <h4>${escapeHtml(f.nome)}</h4>
-              <p><strong>Cargo:</strong> ${escapeHtml(f.cargo)}${f.telefone ? ` • <strong>Telefone:</strong> ${escapeHtml(f.telefone)}` : ''}</p>
-              <p>${f.observacoes ? escapeHtml(f.observacoes) : 'Sem observações cadastradas.'}</p>
-              <div class="chips">
-                <span class="chip">${participacoes} evento(s)</span>
-              </div>
-            </div>
-            <button class="btn-danger" onclick="deleteEmployee('${f.id}')">Excluir</button>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function renderHistory() {
-      const q = els.buscaHistorico.value.trim().toLowerCase();
-
-      const eventos = [...state.eventos]
-        .sort((a, b) => b.data_realizacao.localeCompare(a.data_realizacao))
-        .filter(evento => {
-          const convidados = getPeopleByEvent(evento.id);
-          const equipe = getEmployeesByEvent(evento.id);
-
-          const pool = [
-            evento.nome,
-            evento.local,
-            evento.observacoes,
-            formatDate(evento.data_realizacao),
-            ...convidados.map(p => `${p.nome} ${p.placa} ${p.telefone}`),
-            ...equipe.map(f => `${f.nome} ${f.cargo} ${f.telefone || ''}`)
-          ].join(' ').toLowerCase();
-
-          return pool.includes(q);
-        });
-
-      if (!eventos.length) {
-        els.listaHistorico.innerHTML = '<div class="empty">Nenhum evento encontrado no histórico.</div>';
-        return;
-      }
-
-      els.listaHistorico.innerHTML = eventos.map(evento => {
-        const convidados = getPeopleByEvent(evento.id);
-        const equipe = getEmployeesByEvent(evento.id);
-
-        return `
-          <div class="history-card">
-            <div class="history-top">
-              <div>
-                <h4>${escapeHtml(evento.nome)}</h4>
-                <p style="margin:0; color: var(--text-soft); line-height:1.6;">
-                  ${evento.local ? `<strong>Local:</strong> ${escapeHtml(evento.local)} • ` : ''}
-                  <strong>Convidados:</strong> ${convidados.length} •
-                  <strong>Equipe:</strong> ${equipe.length}
-                </p>
-                ${evento.observacoes ? `<p style="margin:8px 0 0; color: var(--text-soft);">${escapeHtml(evento.observacoes)}</p>` : ''}
-              </div>
-              <span class="event-date">${formatDate(evento.data_realizacao)}</span>
-            </div>
-
-            <div>
-              <div class="subsection-title">Convidados do evento</div>
-              ${convidados.length ? `
-                <div class="attendees">
-                  ${convidados.map(p => `
-                    <div class="attendee">
-                      <div>
-                        <strong>${escapeHtml(p.nome)}</strong>
-                        <span>Placa: ${escapeHtml(p.placa)}</span>
-                        <span>Telefone: ${escapeHtml(p.telefone)}</span>
-                        <span>${p.email ? `E-mail: ${escapeHtml(p.email)}` : 'Sem e-mail cadastrado'}</span>
-                      </div>
-                      <span class="chip">Convidado</span>
-                    </div>
-                  `).join('')}
-                </div>
-              ` : `<div class="empty">Ainda não há convidados cadastrados neste evento.</div>`}
-            </div>
-
-            <div>
-              <div class="subsection-title">Funcionários do evento</div>
-              ${equipe.length ? `
-                <div class="attendees">
-                  ${equipe.map(f => `
-                    <div class="attendee">
-                      <div>
-                        <strong>${escapeHtml(f.nome)}</strong>
-                        <span>Cargo: ${escapeHtml(f.cargo)}</span>
-                        <span>${f.telefone ? `Telefone: ${escapeHtml(f.telefone)}` : 'Telefone não informado'}</span>
-                        <span>${f.observacoes ? escapeHtml(f.observacoes) : 'Sem observações cadastradas'}</span>
-                      </div>
-                      <span class="chip">Equipe</span>
-                    </div>
-                  `).join('')}
-                </div>
-              ` : `<div class="empty">Ainda não há funcionários vinculados neste evento.</div>`}
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function getPeopleByEvent(eventoId) {
-      return state.presencas
-        .filter(pr => pr.evento_id === eventoId)
-        .map(pr => state.pessoas.find(p => p.id === pr.pessoa_id))
-        .filter(Boolean);
-    }
-
-    function getEmployeesByEvent(eventoId) {
-      return state.funcionariosEventos
-        .filter(fe => fe.evento_id === eventoId)
-        .map(fe => state.funcionarios.find(f => f.id === fe.funcionario_id))
-        .filter(Boolean);
-    }
-
-    async function deleteEvent(id) {
-      if (!ensureSupabaseReady()) return;
-
-      const evento = state.eventos.find(ev => ev.id === id);
-      if (!evento) return;
-
-      const ok = confirm(`Excluir o evento "${evento.nome}"? Os convidados e funcionários vinculados a ele também serão removidos do histórico.`);
-      if (!ok) return;
-
-      const { error: presencasError } = await db.from('presencas').delete().eq('evento_id', id);
-      if (presencasError) {
-        console.error(presencasError);
-        alert('Erro ao remover presenças do evento.');
-        return;
-      }
-
-      const { error: funcionariosEventosError } = await db.from('funcionarios_eventos').delete().eq('evento_id', id);
-      if (funcionariosEventosError) {
-        console.error(funcionariosEventosError);
-        alert('Erro ao remover equipe do evento.');
-        return;
-      }
-
-      const { error: eventoError } = await db.from('eventos').delete().eq('id', id);
-      if (eventoError) {
-        console.error(eventoError);
-        alert('Erro ao excluir evento.');
-        return;
-      }
-
-      await refreshAfterChange();
-    }
-
-    async function deletePerson(id) {
-      if (!ensureSupabaseReady()) return;
-
-      const pessoa = state.pessoas.find(p => p.id === id);
-      if (!pessoa) return;
-
-      const ok = confirm(`Excluir "${pessoa.nome}" da base? As participações dela também serão removidas.`);
-      if (!ok) return;
-
-      const { error: presencasError } = await db.from('presencas').delete().eq('pessoa_id', id);
-      if (presencasError) {
-        console.error(presencasError);
-        alert('Erro ao remover participações do convidado.');
-        return;
-      }
-
-      const { error: pessoaError } = await db.from('pessoas').delete().eq('id', id);
-      if (pessoaError) {
-        console.error(pessoaError);
-        alert('Erro ao excluir convidado.');
-        return;
-      }
-
-      await refreshAfterChange();
-    }
-
-    async function deleteEmployee(id) {
-      if (!ensureSupabaseReady()) return;
-
-      const funcionario = state.funcionarios.find(f => f.id === id);
-      if (!funcionario) return;
-
-      const ok = confirm(`Excluir "${funcionario.nome}" da base? As participações dele também serão removidas.`);
-      if (!ok) return;
-
-      const { error: vinculosError } = await db.from('funcionarios_eventos').delete().eq('funcionario_id', id);
-      if (vinculosError) {
-        console.error(vinculosError);
-        alert('Erro ao remover vínculos do funcionário.');
-        return;
-      }
-
-      const { error: funcionarioError } = await db.from('funcionarios').delete().eq('id', id);
-      if (funcionarioError) {
-        console.error(funcionarioError);
-        alert('Erro ao excluir funcionário.');
-        return;
-      }
-
-      await refreshAfterChange();
-    }
-
-    async function clearAllData() {
-      if (!ensureSupabaseReady()) return;
-
-      const ok = confirm('Tem certeza que deseja apagar todos os eventos, convidados, funcionários e histórico?');
-      if (!ok) return;
-
-      const tables = [
-        'presencas',
-        'funcionarios_eventos',
-        'pessoas',
-        'funcionarios',
-        'eventos'
-      ];
-
-      for (const table of tables) {
-        const { error } = await db.from(table).delete().not('id', 'is', null);
-        if (error) {
-          console.error(`Erro limpando ${table}:`, error);
-          alert(`Erro ao limpar a tabela ${table}.`);
-          return;
-        }
-      }
-
-      await refreshAfterChange();
-      alert('Base limpa com sucesso.');
-    }
-
-    function exportExcel() {
-  const eventosOrdenados = [...state.eventos].sort((a, b) =>
-    a.data_realizacao.localeCompare(b.data_realizacao)
-  );
-
-  if (!eventosOrdenados.length) {
-    alert('Não há eventos cadastrados para exportar.');
-    return;
-  }
-
-  const listaEventos = eventosOrdenados
-    .map((ev, index) => `${index + 1}. ${ev.nome} - ${formatDate(ev.data_realizacao)}`)
-    .join('\n');
-
-  const escolha = prompt(
-    `Escolha o evento que deseja exportar digitando o número:\n\n${listaEventos}`
-  );
-
-  if (escolha === null) return;
-
-  const numeroEscolhido = Number(escolha.trim());
-
-  if (
-    !Number.isInteger(numeroEscolhido) ||
-    numeroEscolhido < 1 ||
-    numeroEscolhido > eventosOrdenados.length
-  ) {
-    alert('Seleção inválida. Digite um número válido da lista.');
-    return;
-  }
-
-  const eventoSelecionado = eventosOrdenados[numeroEscolhido - 1];
-
-  const pessoasHeaders = [
-    'Evento',
-    'Data do evento',
-    'Local',
-    'Pessoa',
-    'Placa',
-    'Telefone',
-    'E-mail',
-    'Registrado em',
-    'Status callback',
-    'Data callback',
-    'Responsável callback',
-    'Retorno do cliente',
-    'Observações callback'
-  ];
-
-  const equipeHeaders = [
-    'Evento',
-    'Data do evento',
-    'Local',
-    'Funcionário',
-    'Cargo',
-    'Telefone',
-    'Observações',
-    'Registrado em'
-  ];
-
-  const pessoasRows = state.presencas
-    .filter(pr => pr.evento_id === eventoSelecionado.id)
-    .map(pr => {
-      const pessoa = state.pessoas.find(p => p.id === pr.pessoa_id);
-
-      return {
-        'Evento': eventoSelecionado.nome,
-        'Data do evento': formatDate(eventoSelecionado.data_realizacao),
-        'Local': eventoSelecionado.local || '',
-        'Pessoa': pessoa?.nome || '',
-        'Placa': pessoa?.placa || '',
-        'Telefone': pessoa?.telefone || '',
-        'E-mail': pessoa?.email || '',
-        'Registrado em': formatDateTime(pr.registrado_em),
-        'Status callback': 'Pendente',
-        'Data callback': '',
-        'Responsável callback': '',
-        'Retorno do cliente': '',
-        'Observações callback': ''
-      };
-    });
-
-  const equipeRows = state.funcionariosEventos
-    .filter(fe => fe.evento_id === eventoSelecionado.id)
-    .map(fe => {
-      const funcionario = state.funcionarios.find(f => f.id === fe.funcionario_id);
-
-      return {
-        'Evento': eventoSelecionado.nome,
-        'Data do evento': formatDate(eventoSelecionado.data_realizacao),
-        'Local': eventoSelecionado.local || '',
-        'Funcionário': funcionario?.nome || '',
-        'Cargo': funcionario?.cargo || '',
-        'Telefone': funcionario?.telefone || '',
-        'Observações': funcionario?.observacoes || '',
-        'Registrado em': formatDateTime(fe.registrado_em)
-      };
-    });
-
-  const wb = XLSX.utils.book_new();
-
-  const pessoasSheet = buildSheetWithHeaders(pessoasHeaders, pessoasRows);
-  const equipeSheet = buildSheetWithHeaders(equipeHeaders, equipeRows);
-
-  XLSX.utils.book_append_sheet(wb, pessoasSheet, 'Pessoas');
-  XLSX.utils.book_append_sheet(wb, equipeSheet, 'Equipe_Funcionarios');
-
-  const nomeArquivo = sanitizeFileName(
-    `${eventoSelecionado.nome}_${formatDate(eventoSelecionado.data_realizacao)}`
-  );
-
-  XLSX.writeFile(wb, `${nomeArquivo}_valet.xlsx`);
-}
-
-    function buildSheetWithHeaders(headers, rows) {
-      const aoa = [headers];
-
-      if (rows.length) {
-        rows.forEach(row => {
-          aoa.push(headers.map(header => row[header] ?? ''));
-        });
-      } else {
-        aoa.push(headers.map((header, index) => index === 0 ? 'Sem registros' : ''));
-      }
-
-      const sheet = XLSX.utils.aoa_to_sheet(aoa);
-
-      sheet['!cols'] = headers.map(header => ({
-        wch: Math.max(header.length + 2, 18)
-      }));
-
-      return sheet;
-    }
-
-    function sanitizeFileName(value = '') {
-      return String(value)
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^\w\-]+/g, '_')
-        .replace(/_+/g, '_')
-        .replace(/^_+|_+$/g, '')
-        .toLowerCase();
-    }
-
-    function createId() {
-      return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-    }
-
-    function normalizePlate(value) {
-      return String(value).toUpperCase().replace(/[^A-Z0-9]/g, '');
-    }
-
-    function normalizeText(value = '') {
-      return String(value).trim().toLowerCase();
-    }
-
-    function getTodayISO() {
-      const now = new Date();
-      const offset = now.getTimezoneOffset();
-      const local = new Date(now.getTime() - offset * 60000);
-      return local.toISOString().split('T')[0];
-    }
-
-    function formatDate(value) {
-      if (!value) return '—';
-      const [y, m, d] = value.includes('T')
-        ? value.split('T')[0].split('-')
-        : value.split('-');
-      return `${d}/${m}/${y}`;
-    }
-
-    function formatDateTime(value) {
-      if (!value) return '—';
-      return new Date(value).toLocaleString('pt-BR');
-    }
-
-    function escapeHtml(str = '') {
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
-
-    window.deleteEvent = deleteEvent;
-    window.deletePerson = deletePerson;
-    window.deleteEmployee = deleteEmployee;
-  </script>
+  <div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <script src="js/config.js" defer></script>
+  <script src="js/state.js" defer></script>
+  <script src="js/utils.js" defer></script>
+  <script src="js/dom.js" defer></script>
+  <script src="js/auth.js" defer></script>
+  <script src="js/data.js" defer></script>
+  <script src="js/events.js" defer></script>
+  <script src="js/people.js" defer></script>
+  <script src="js/employees.js" defer></script>
+  <script src="js/history.js" defer></script>
+  <script src="js/export.js" defer></script>
+  <script src="js/main.js" defer></script>
 </body>
 </html>
