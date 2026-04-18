@@ -1,95 +1,137 @@
+// ============================================================
+// main.js — Ponto de entrada, binding de eventos e inicialização
+// ============================================================
+
 window.App = window.App || {};
 
-/* ============================================================
-   main.js — Bootstrap + Render seguro + Compatibilidade
-   ============================================================ */
+// ------------------------------------------------------------
+// Re-renderiza todas as views com os dados atuais do estado
+// ------------------------------------------------------------
+App.renderAll = function () {
+  App.renderStats();
+  App.renderAgenda();
+  App.renderEventOptions();
+  App.renderEventList();
+  App.renderPeopleList();
+  App.renderEmployeeList();
+  App.renderHistory();
+};
 
-(function () {
-  // Evita rodar duas vezes
-  if (App._mainBootstrapped) return;
-  App._mainBootstrapped = true;
+// ------------------------------------------------------------
+// Registra todos os event listeners da aplicação
+// ------------------------------------------------------------
+App.bindEvents = function () {
 
-  // ------------------------------------------------------------
-  // Compatibilidade: funções antigas -> novas
-  // (cria wrappers que chamam a função "nova" se existir)
-  // ------------------------------------------------------------
-  function makeCompat(oldName, newName) {
-    if (typeof App[oldName] === 'function') return;
+  // — Navegação —
+  App.dom.mobileMenuBtn?.addEventListener('click', App.toggleSidebar);
 
-    App[oldName] = function () {
-      if (typeof App[newName] === 'function') {
-        return App[newName].apply(App, arguments);
-      }
-      // Se nenhuma existir, não quebra o app
-      console.warn('[compat] Função ausente:', oldName, '->', newName);
-    };
-  }
+  App.dom.navLinks.forEach((btn) => {
+    btn.addEventListener('click', () => App.setView(btn.dataset.view));
+  });
 
-  // Pessoas
-  makeCompat('renderPeopleList', 'renderPeople');
-  // Funcionários (caso no seu projeto seja renderStaff / renderEmployees)
-  makeCompat('renderStaffList', 'renderStaff');
-  makeCompat('renderEmployeesList', 'renderEmployees');
+  // — Autenticação —
+  App.dom.loginForm?.addEventListener('submit', App.handleLogin);
+  App.dom.btnLogout?.addEventListener('click',  App.handleLogout);
 
-  // ------------------------------------------------------------
-  // Render seguro: não deixa 1 tela quebrar o resto
-  // ------------------------------------------------------------
-  function safeCall(fnName) {
-    try {
-      var fn = App[fnName];
-      if (typeof fn === 'function') fn();
-    } catch (err) {
-      console.error('[render] Erro em ' + fnName + ':', err);
-      if (typeof App.showToast === 'function') {
-        App.showToast('Erro ao renderizar: ' + fnName, 'error');
-      }
-    }
-  }
+  // — Formulários de cadastro —
+  App.dom.formEvento?.addEventListener('submit',      App.handleSaveEvent);
+  App.dom.formPessoa?.addEventListener('submit',      App.handleSavePerson);
+  App.dom.formFuncionario?.addEventListener('submit', App.handleSaveEmployee);
+  App.dom.editPessoaForm?.addEventListener('submit',  App.handleUpdatePerson);
 
-  // ------------------------------------------------------------
-  // Render geral (chamado após login, após carregar dados, etc.)
-  // ------------------------------------------------------------
-  App.renderAll = function () {
-    // Atenção: chame aqui os nomes que EXISTEM no seu projeto.
-    // Mantive vários em safeCall para não quebrar se algum não existir.
+  // — Botões de limpar campos —
+  App.dom.btnLimparEvento?.addEventListener('click',      () => App.dom.formEvento?.reset());
+  App.dom.btnLimparPessoa?.addEventListener('click',      () => App.dom.formPessoa?.reset());
+  App.dom.btnLimparFuncionario?.addEventListener('click', () => App.dom.formFuncionario?.reset());
 
-    safeCall('renderDashboard');
-    safeCall('renderFlow');
-    safeCall('renderEvents');
+  // — Exportação —
+  App.dom.btnExportar?.addEventListener('click',       App.exportExcel);
+  App.dom.btnConfirmExport?.addEventListener('click',  App.confirmExportExcel);
+  App.dom.btnCloseExportModal?.addEventListener('click', () =>
+    App.closeModal(App.dom.exportModal)
+  );
 
-    // Aqui é o ponto crítico: garante que "People" renderiza com nome antigo ou novo
-    // - se você tem App.renderPeople(), o wrapper renderPeopleList chama ele
-    // - se você tem App.renderPeopleList(), também funciona
-    safeCall('renderPeopleList');
-    safeCall('renderPeople');
+  // — Modal de edição de pessoa —
+  App.dom.btnCancelEditPessoa?.addEventListener('click', () =>
+    App.closeModal(App.dom.editPessoaModal)
+  );
 
-    // Funcionários/equipe (tenta várias variações)
-    safeCall('renderStaffList');
-    safeCall('renderStaff');
-    safeCall('renderEmployeesList');
-    safeCall('renderEmployees');
+  // — Limpeza geral —
+  App.dom.btnLimparTudo?.addEventListener('click', App.clearAllData);
 
-    safeCall('renderHistory');
-  };
+  // — Campos de busca (debounced para não re-renderizar a cada tecla) —
+  App.dom.buscaEventos?.addEventListener('input',      App._debounce(App.renderEventList,    200));
+  App.dom.buscaPessoas?.addEventListener('input',      App._debounce(App.renderPeopleList,   200));
+  App.dom.buscaFuncionarios?.addEventListener('input', App._debounce(App.renderEmployeeList, 200));
+  App.dom.buscaHistorico?.addEventListener('input',    App._debounce(App.renderHistory,      200));
 
-  // ------------------------------------------------------------
-  // Bootstrap ao carregar a página
-  // ------------------------------------------------------------
-  document.addEventListener('DOMContentLoaded', function () {
-    // Se existir um init geral no seu app, chama
-    if (typeof App.init === 'function') {
-      try { App.init(); } catch (e) { console.error('[init] erro', e); }
-    }
+  // — Delegação de cliques nas listas (delete, edit) —
+  document.addEventListener('click', async (e) => {
+    const target = e.target.closest('[data-action]');
+    if (!target) return;
 
-    // Se existir initAuth, chama (auth.js normalmente define isso)
-    if (typeof App.initAuth === 'function') {
-      try { App.initAuth(); } catch (e) { console.error('[auth] erro', e); }
-    }
+    const { action, id } = target.dataset;
 
-    // Se você carrega dados e não renderiza depois, deixa um "fallback":
-    // (não atrapalha se data.js já chama renderAll)
-    if (typeof App.renderAll === 'function') {
-      try { App.renderAll(); } catch (e) { console.error('[renderAll] erro', e); }
+    switch (action) {
+      case 'delete-event':    await App.deleteEvent(id);          break;
+      case 'delete-person':   await App.deletePerson(id);         break;
+      case 'delete-employee': await App.deleteEmployee(id);       break;
+      case 'edit-person':     App.openEditPersonModal(id);        break;
+      default:
+        console.warn(`[Main] Ação desconhecida: "${action}"`);
     }
   });
-})();
+
+  // — Recarrega dados ao voltar para a aba (com throttle de 30s) —
+  window.addEventListener('focus', App._onWindowFocus);
+};
+
+// ------------------------------------------------------------
+// Recarrega dados ao voltar para a aba do navegador
+// Throttle de 30s evita re-fetches excessivos
+// ------------------------------------------------------------
+App._lastFocusRefresh = 0;
+
+App._onWindowFocus = async function () {
+  if (!App.state.currentUser) return;
+
+  const agora = Date.now();
+  const THROTTLE_MS = 30_000; // 30 segundos
+
+  if (agora - App._lastFocusRefresh < THROTTLE_MS) return;
+
+  App._lastFocusRefresh = agora;
+
+  const loaded = await App.loadAllData(false);
+  if (loaded) App.renderAll();
+};
+
+// ------------------------------------------------------------
+// Inicialização principal (DOMContentLoaded)
+// ------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', async () => {
+  // 1. Cache dos elementos do DOM
+  App.cacheDom();
+
+  // 2. Inicializa o cliente Supabase
+  App.initSupabase();
+
+  // 3. Registra todos os event listeners
+  App.bindEvents();
+
+  // 4. Renderiza o estado inicial (zerado — antes de carregar dados)
+  App.renderAll();
+  App.setView('dashboard');
+
+  // 5. Verifica sessão ativa e carrega dados se logado
+  await App.bootstrapAuth();
+
+  // 6. Aviso de configuração se o Supabase não estiver configurado
+  if (!App.isSupabaseConfigured()) {
+    App.showToast(
+      'Configure o Supabase em js/config.js para começar.',
+      'warning',
+      5000
+    );
+  }
+});
