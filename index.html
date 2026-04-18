@@ -63,36 +63,30 @@
   ════════════════════════════════════════════ -->
   <div id="appShell" class="app hidden">
 
-  <aside class="sidebar" id="sidebar">
+    <aside class="sidebar" id="sidebar">
 
-  <!-- Brand -->
-  <div class="brand">
-    <h1>ÉVORA</h1>
-    <p class="brand-subtitle">Gestão de Portaria</p>
-  </div>
+      <!-- Brand -->
+      <div class="brand">
+        <h1>ÉVORA</h1>
+        <p class="brand-subtitle">Gestão de Portaria</p>
+      </div>
 
-  <!-- Menu -->
-  <nav class="menu">
-    <button class="nav-link" data-view="dashboard">Dashboard</button>
-    <button class="nav-link" data-view="fluxo">Fluxo</button>
-    <button class="nav-link" data-view="eventos">Eventos</button>
-    <button class="nav-link" data-view="pessoas">Pessoas</button>
-    <button class="nav-link" data-view="funcionarios">Funcionários</button>
-    <button class="nav-link" data-view="historico">Histórico</button>
-  </nav>
+      <!-- Menu -->
+      <nav class="menu">
+        <button class="nav-link" data-view="dashboard">Dashboard</button>
+        <button class="nav-link" data-view="fluxo">Fluxo</button>
+        <button class="nav-link" data-view="eventos">Eventos</button>
+        <button class="nav-link" data-view="pessoas">Pessoas</button>
+        <button class="nav-link" data-view="funcionarios">Funcionários</button>
+        <button class="nav-link" data-view="historico">Histórico</button>
+      </nav>
 
-  <!-- Footer com usuário logado -->
-  <div class="sidebar-footer">
-    <p class="sidebar-footer-note">
-      Plataforma online com autenticação,
-      agenda compartilhada e exportação em Excel.
-    </p>
+      <!-- Footer com apenas o e-mail logado -->
+      <div class="sidebar-footer">
+        <span id="currentUserEmail" class="user-badge user-badge--sidebar hidden"></span>
+      </div>
 
-    <div id="currentUserEmailSidebar" class="user-badge user-badge--sidebar hidden"></div>
-    <span id="currentUserEmail" class="user-badge hidden"></span>
-  </div>
-
-</aside>
+    </aside>
 
     <main class="content">
 
@@ -111,7 +105,6 @@
         </div>
 
         <div class="top-actions">
-          <span id="currentUserEmail" class="user-badge hidden"></span>
           <button class="btn-secondary hidden" id="btnLogout" type="button">Sair</button>
           <button class="btn-secondary" id="btnExportar" type="button">Exportar Excel</button>
           <button class="btn-danger" id="btnLimparTudo" type="button">Limpar base</button>
@@ -543,7 +536,6 @@
   </div>
 
   <!-- Toast container -->
-   <!-- Toast container -->
   <div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
@@ -563,4 +555,3 @@
   <script src="js/main.js" defer></script>
 </body>
 </html>
-

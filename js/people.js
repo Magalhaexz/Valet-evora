@@ -25,7 +25,9 @@ App._findExistingPerson = function (payload, excludeId) {
 
     var samePlate = placa && App.normalizePlate(pessoa.placa || '') === placa;
     var sameEmail = email && App._normalizeEmail(pessoa.email || '') === email;
-    var sameNamePhone = nome && telefone &&
+    var sameNamePhone =
+      nome &&
+      telefone &&
       App.normalizeText(pessoa.nome || '') === nome &&
       App._normalizePhone(pessoa.telefone || '') === telefone;
     var sameName = nome && App.normalizeText(pessoa.nome || '') === nome;
@@ -85,10 +87,7 @@ App.handleSavePerson = async function (event) {
         email: email || pessoaExistente.email || null,
       };
 
-      var updateResult = await App.db
-        .from('pessoas')
-        .update(updatePayload)
-        .eq('id', pessoaId);
+      var updateResult = await App.db.from('pessoas').update(updatePayload).eq('id', pessoaId);
 
       if (updateResult.error) {
         throw new Error('Erro ao atualizar pessoa: ' + updateResult.error.message);
@@ -165,18 +164,16 @@ App.renderPeopleList = function () {
   var lista = (App.state.pessoas || []).filter(function (pessoa) {
     if (!query) return true;
 
-    var eventosDaPessoa = (presencasPorPessoa[pessoa.id] || []).map(function (presenca) {
-      var evento = App.getEventById(presenca.evento_id);
-      return evento ? evento.nome : '';
-    }).join(' ');
+    var eventosDaPessoa = (presencasPorPessoa[pessoa.id] || [])
+      .map(function (presenca) {
+        var evento = App.getEventById(presenca.evento_id);
+        return evento ? evento.nome : '';
+      })
+      .join(' ');
 
-    var texto = App.normalizeText([
-      pessoa.nome,
-      pessoa.placa || '',
-      pessoa.telefone || '',
-      pessoa.email || '',
-      eventosDaPessoa,
-    ].join(' '));
+    var texto = App.normalizeText(
+      [pessoa.nome, pessoa.placa || '', pessoa.tele || '', pessoa.email || '', eventosDaPessoa].join(' ')
+    );
 
     return texto.includes(query);
   });
@@ -189,25 +186,50 @@ App.renderPeopleList = function () {
     return;
   }
 
-  container.innerHTML = lista.map(function (pessoa) {
-    var vinculos = presencasPorPessoa[pessoa.id] || [];
-    var chipsEventos = vinculos
-      .map(function (presenca) {
-        var evento = App.getEventById(presenca.evento_id);
-        if (!evento) return '';
-        return '<span class="chip chip--guest">' + App.escapeHtml(evento.nome) + '</span>';
-      })
-      .filter(Boolean)
-      .join('');
+  container.innerHTML = lista
+    .map(function (pessoa) {
+      var vinculos = presencasPorPessoa[pessoa.id] || [];
+      var chipsEventos = vinculos
+        .map(function (presenca) {
+          var evento = App.getEventById(presenca.evento_id);
+          if (!evento) return '';
+          return '<span class="chip chip--guest">' + App.escapeHtml(evento.nome) + '</span>';
+        })
+        .filter(Boolean)
+        .join('');
 
-    var meta = [
-      '<strong>Placa:</strong> ' + App.escapeHtml(pessoa.placa || '—'),
-      '<strong>Tel:</strong> ' + App.escapeHtml(pessoa.telefone || '—'),
-      pessoa.email ? '<strong>E-mail:</strong> ' + App.escapeHtml(pessoa.email) : null,
-    ].filter(Boolean).join(' • ');
+      var meta = [
+        '<strong>Placa:</strong> ' + App.escapeHtml(pessoa.placa || '—'),
+        '<strong>Tel:</strong> ' + App.escapeHtml(pessoa.telefone || '—'),
+        pessoa.email ? '<strong>E-mail:</strong> ' + App.escapeHtml(pessoa.email) : null,
+      ]
+        .filter(Boolean)
+        .join(' • ');
 
-    return '\n      <div class="list-item" data-id="' + App.escapeHtml(pessoa.id) + '">\n        <div class="list-item-body">\n          <h4>' + App.escapeHtml(pessoa.nome || 'Sem nome') + '</h4>\n          <p class="list-item-meta">' + meta + '</p>\n          <div class="chips">\n            <span class="chip">' + vinculos.length + ' evento' + (vinculos.length !== 1 ? 's' : '') + '</span>\n            ' + chipsEventos + '\n          </div>\n        </div>\n        <div class="list-item-actions">\n          <button class="btn-secondary" type="button" data-action="edit-person" data-id="' + App.escapeHtml(pessoa.id) + '">Editar</button>\n          <button class="btn-danger" type="button" data-action="delete-person" data-id="' + App.escapeHtml(pessoa.id) + '">Excluir</button>\n        </div>\n      </div>\n    ';
-  }).join('');
+      // ✅ PASSO 2: botão Vincular adicionado aqui
+      return (
+        '\n      <div class="list-item" data-id="' +
+        App.escapeHtml(pessoa.id) +
+        '">\n        <div class="list-item-body">\n          <h4>' +
+        App.escapeHtml(pessoa.nome || 'Sem nome') +
+        '</h4>\n          <p class="list-item-meta">' +
+        meta +
+        '</p>\n          <div class="chips">\n            <span class="chip">' +
+        vinculos.length +
+        ' evento' +
+        (vinculos.length !== 1 ? 's' : '') +
+        '</span>\n            ' +
+        chipsEventos +
+        '\n          </div>\n        </div>\n        <div class="list-item-actions">\n          <button class="btn-secondary" type="button" data-action="link-person" data-id="' +
+        App.escapeHtml(pessoa.id) +
+        '">Vincular</button>\n          <button class="btn-secondary" type="button" data-action="edit-person" data-id="' +
+        App.escapeHtml(pessoa.id) +
+        '">Editar</button>\n          <button class="btn-danger" type="button" data-action="delete-person" data-id="' +
+        App.escapeHtml(pessoa.id) +
+        '">Excluir</button>\n        </div>\n      </div>\n    '
+      );
+    })
+    .join('');
 };
 
 App.openEditPersonModal = function (id) {
@@ -241,12 +263,10 @@ App.handleUpdatePerson = async function (event) {
     return;
   }
 
-  var conflito = App._findExistingPerson({
-    nome: nome,
-    placa: placa,
-    telefone: telefone,
-    email: email,
-  }, id);
+  var conflito = App._findExistingPerson(
+    { nome: nome, placa: placa, telefone: telefone, email: email },
+    id
+  );
 
   if (conflito) {
     App.showToast('Já existe outra pessoa com esses dados na base.', 'warning');
@@ -295,9 +315,10 @@ App.deletePerson = async function (id) {
     return presenca.pessoa_id === id;
   }).length;
 
-  var mensagem = totalVinculos > 0
-    ? 'Excluir "' + pessoa.nome + '"? Ela está vinculada a ' + totalVinculos + ' evento(s).'
-    : 'Excluir "' + pessoa.nome + '" da base de convidados?';
+  var mensagem =
+    totalVinculos > 0
+      ? 'Excluir "' + pessoa.nome + '"? Ela está vinculada a ' + totalVinculos + ' evento(s).'
+      : 'Excluir "' + pessoa.nome + '" da base de convidados?';
 
   var confirmou = await App.confirm(mensagem, 'Excluir pessoa');
   if (!confirmou) return;
@@ -305,7 +326,7 @@ App.deletePerson = async function (id) {
   try {
     if (totalVinculos > 0) {
       var presencasResult = await App.db.from('presencas').delete().eq('pessoa_id', id);
-      if (presencasResult.error) {
+      if (presencasResult) {
         throw new Error('Erro ao remover presenças: ' + presencasResult.error.message);
       }
     }
@@ -322,3 +343,158 @@ App.deletePerson = async function (id) {
     App.showToast(err.message || 'Não foi possível excluir a pessoa.', 'error');
   }
 };
+
+// ============================================================
+// PASSO 2 — Modal "Vincular" + clique do botão Vincular
+// ============================================================
+
+App.people = App.people || {};
+
+App.people.ensureLinkModal = function () {
+  if (document.getElementById('modalVincularPessoa')) return;
+
+  var wrap = document.createElement('div');
+  wrap.innerHTML = `
+    <div class="modal-overlay hidden" id="modalVincularPessoa">
+      <div class="modal-panel modal-panel-sm">
+        <div class="modal-header">
+          <h3 class="modal-title" id="modalVincularPessoaTitulo">Vincular pessoa</h3>
+        </div>
+        <div class="modal-body">
+          <p class="modal-text" id="modalVincularPessoaInfo">Selecione o evento.</p>
+          <div class="field" style="margin-top:16px">
+            <label for="modalVincularPessoaEvento">Evento</label>
+            <select id="modalVincularPessoaEvento"></select>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary" id="modalVincularPessoaCancelar" type="button">Cancelar</button>
+          <button class="btn" id="modalVincularPessoaConfirmar" type="button">Vincular</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(wrap.firstElementChild);
+
+  var modal = document.getElementById('modalVincularPessoa');
+  var btnCancel = document.getElementById('modalVincularPessoaCancelar');
+
+  function close() {
+    modal.classList.add('hidden');
+    document.body.classList.remove('modal-open');
+  }
+
+  btnCancel.addEventListener('click', close);
+  modal.addEventListener('click', function (e) {
+    if (e.target === modal) close();
+  });
+
+  App.people._closeLinkModal = close;
+};
+
+App.people.linkToEvent = async function (pessoaId, eventoId) {
+  if (!App.ensureSupabaseReady()) throw new Error('Supabase não inicializado.');
+  if (!pessoaId || !eventoId) throw new Error('pessoaId/eventoId ausente.');
+
+  // impede duplicar pelo estado local
+  var jaLocal = (App.state.presencas || []).some(function (pr) {
+    return pr.pessoa_id === pessoaId && pr.evento_id === eventoId;
+  });
+  if (jaLocal) return { already: true };
+
+  var payload = {
+    id: App.createId(),
+    pessoa_id: pessoaId,
+    evento_id: eventoId,
+    registrado_em: new Date().toISOString(),
+  };
+
+  var ins = await App.db.from('presencas').insert([payload]);
+  if (ins.error) throw ins.error;
+
+  return { already: false };
+};
+
+App.people.openLinkModal = function (pessoaId) {
+  App.people.ensureLinkModal();
+
+  var pessoa = (App.state.pessoas || []).find(function (p) {
+    return p.id === pessoaId;
+  });
+
+  if (!pessoa) {
+    App.showToast('Pessoa não encontrada.', 'error');
+    return;
+  }
+
+  var eventos = App.state.eventos || [];
+
+  var modal = document.getElementById('modalVincularPessoa');
+  var title = document.getElementById('modalVincularPessoaTitulo');
+  var info = document.getElementById('modalVincularPessoaInfo');
+  var sel = document.getElementById('modalVincularPessoaEvento');
+  var btnOk = document.getElementById('modalVincularPessoaConfirmar');
+
+  title.textContent = pessoa.nome || 'Vincular pessoa';
+  info.textContent =
+    (pessoa.placa ? 'Placa: ' + pessoa.placa + ' · ' : '') + (pessoa.telefone ? 'Tel: ' + pessoa.telefone : '');
+
+  sel.innerHTML = eventos.length
+    ? eventos
+        .map(function (ev) {
+          var nome = App.escapeHtml ? App.escapeHtml(ev.nome) : ev.nome;
+          var data = App.formatDate ? App.formatDate(ev.data) : ev.data;
+          return `<option value="${ev.id}">${nome} — ${data}</option>`;
+        })
+        .join('')
+    : `<option value="">Nenhum evento cadastrado</option>`;
+
+  modal.classList.remove('hidden');
+  document.body.classList.add('modal-open');
+
+  btnOk.onclick = async function () {
+    var eventoId = sel.value;
+
+    if (!eventoId) {
+      App.showToast('Selecione um evento.', 'warning');
+      return;
+    }
+
+    App._setButtonLoading(btnOk, true, 'Vinculando…');
+
+    try {
+      var res = await App.people.linkToEvent(pessoaId, eventoId);
+
+      // atualiza estado (pessoas/presencas) e re-renderiza
+      await App.refreshAfterChange('pessoas');
+
+      if (res.already) {
+        App.showToast('Essa pessoa já está vinculada a esse evento.', 'warning');
+      } else {
+        App.showToast('Vinculado com sucesso!', 'success');
+      }
+
+      App._setButtonLoading(btnOk, false, 'Vincular');
+      App.people._closeLinkModal();
+
+      if (typeof App.renderAll === 'function') App.renderAll();
+    } catch (e) {
+      console.error(e);
+      App.showToast('Erro ao vincular: ' + (e.message || 'desconhecido'), 'error');
+      App._setButtonLoading(btnOk, false, 'Vincular');
+    }
+  };
+};
+
+// ✅ Handler do clique do botão "Vincular" (uma vez só)
+if (!App._peopleLinkClickBound) {
+  App._peopleLinkClickBound = true;
+
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-action="link-person"]');
+    if (!btn) return;
+
+    var id = btn.dataset.id;
+    App.people.openLinkModal(id);
+  });
+}
