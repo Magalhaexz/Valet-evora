@@ -3,8 +3,8 @@ window.App = window.App || {};
 App.config = {
   APP_NAME: 'ÉVORA',
   AUTO_REFRESH_MS: 8000,
-  SUPABASE_URL: 'COLE_SUA_SUPABASE_URL_AQUI',
-  SUPABASE_ANON_KEY: 'COLE_SUA_SUPABASE_ANON_KEY_AQUI'
+  SUPABASE_URL: 'https://yccvpwjxfstjbvuvrgch.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljY3Zwd2p4ZnN0amJ2dXZyZ2NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NTI1NzIsImV4cCI6MjA5MjAyODU3Mn0.QwN4nQarFcPWCiKcMioNN5grraQmxKpm9frakXY2q3U'
 };
 
 App.db = null;
