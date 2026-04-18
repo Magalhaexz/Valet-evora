@@ -1102,3 +1102,100 @@ body.modal-open {
     padding: 20px 16px;
   }
 }
+/* ===== AJUSTE DE ESPAÇAMENTO DO DASHBOARD ===== */
+#view-dashboard {
+  display: grid;
+  gap: 18px;
+}
+
+#view-dashboard .stats {
+  gap: 16px;
+}
+
+#view-dashboard .card {
+  padding: 22px;
+}
+
+#view-dashboard .dashboard-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.82fr);
+  gap: 18px;
+  align-items: start;
+}
+
+#view-dashboard .section-title {
+  margin-bottom: 4px;
+}
+
+#view-dashboard .section-subtitle {
+  margin: 0 0 16px;
+}
+
+#view-dashboard .agenda-list {
+  gap: 12px;
+}
+
+#view-dashboard .empty {
+  padding: 28px 16px;
+  min-height: 116px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#view-dashboard .stat-label {
+  margin-bottom: 10px;
+}
+
+#view-dashboard .stat-value {
+  margin-bottom: 8px;
+}
+
+#view-dashboard .stat-note {
+  line-height: 1.45;
+}
+
+/* deixa os cards do topo mais compactos */
+#view-dashboard .stats .card {
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* reduz respiro lateral da área principal em telas grandes */
+.content {
+  padding: 28px 32px;
+}
+
+.shell {
+  gap: 18px;
+}
+
+@media (max-width: 1180px) {
+  #view-dashboard .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .content {
+    padding: 24px 24px;
+  }
+}
+
+@media (max-width: 720px) {
+  #view-dashboard {
+    gap: 14px;
+  }
+
+  #view-dashboard .card {
+    padding: 18px;
+  }
+
+  #view-dashboard .empty {
+    min-height: 92px;
+    padding: 20px 14px;
+  }
+
+  .content {
+    padding: 18px 16px;
+  }
+}
