@@ -1,208 +1,274 @@
+// ============================================================
+// employees.js — Cadastro, listagem e exclusão de funcionários
+// ============================================================
+
 window.App = window.App || {};
 
+// ------------------------------------------------------------
+// Salva ou atualiza um funcionário e vincula ao evento
+// ------------------------------------------------------------
 App.handleSaveEmployee = async function (event) {
   event.preventDefault();
-
   if (!App.ensureSupabaseReady()) return;
 
-  const eventoId = App.dom.funcionarioEvento?.value || '';
+  // — Coleta e valida os campos —
+  const eventoId    = App.dom.funcionarioEvento?.value.trim() || '';
+  const nome        = App.dom.funcionarioNome?.value.trim()   || '';
+  const cargo       = App.dom.funcionarioCargo?.value.trim()  || '';
+  const telefone    = App.dom.funcionarioTelefone?.value.trim() || '';
+  const observacoes = App.dom.funcionarioObs?.value.trim()    || '';
 
   if (!eventoId) {
     App.showToast('Selecione o evento para vincular o funcionário.', 'warning');
     return;
   }
 
-  const nome = App.dom.funcionarioNome?.value.trim() || '';
-  const cargo = App.dom.funcionarioCargo?.value.trim() || '';
-  const telefone = App.dom.funcionarioTelefone?.value.trim() || '';
-  const observacoes = App.dom.funcionarioObs?.value.trim() || '';
-
   if (!nome || !cargo) {
     App.showToast('Preencha nome e cargo do funcionário.', 'warning');
     return;
   }
 
-  let funcionario = App.state.funcionarios.find(
-    (item) =>
-      App.normalizeText(item.nome) === App.normalizeText(nome) &&
-      App.normalizeText(item.cargo) === App.normalizeText(cargo)
-  );
+  // — Verifica se o evento existe —
+  const evento = App.getEventById(eventoId);
+  if (!evento) {
+    App.showToast('Evento selecionado não encontrado.', 'error');
+    return;
+  }
+
+  const submitBtn = App.dom.formFuncionario?.querySelector('button[type="submit"]');
+  App._setButtonLoading(submitBtn, true, 'Salvando…');
 
   try {
+    // — Verifica se o funcionário já existe na base (por nome + cargo) —
+    const nomeNorm  = App.normalizeText(nome);
+    const cargoNorm = App.normalizeText(cargo);
+
+    let funcionario = App.state.funcionarios.find(
+      (f) =>
+        App.normalizeText(f.nome)  === nomeNorm &&
+        App.normalizeText(f.cargo) === cargoNorm
+    ) || null;
+
     if (funcionario) {
-      const { error: updateError } = await App.db
+      // Atualiza telefone e observações se o funcionário já existe
+      const { error } = await App.db
         .from('funcionarios')
         .update({ telefone, observacoes })
         .eq('id', funcionario.id);
 
-      if (updateError) {
-        console.error('Erro ao atualizar funcionário:', updateError);
-        App.showToast('Erro ao atualizar funcionário.', 'error');
-        return;
-      }
+      if (error) throw new Error(`Erro ao atualizar funcionário: ${error.message}`);
+
     } else {
-      funcionario = {
-        id: App.createId(),
+      // Cria o funcionário novo
+      const novo = {
+        id:         App.createId(),
         nome,
         cargo,
         telefone,
         observacoes,
-        criado_em: new Date().toISOString()
+        criado_em:  new Date().toISOString(),
       };
 
-      const { error: insertError } = await App.db.from('funcionarios').insert([funcionario]);
+      const { error } = await App.db.from('funcionarios').insert([novo]);
+      if (error) throw new Error(`Erro ao inserir funcionário: ${error.message}`);
 
-      if (insertError) {
-        console.error('Erro ao salvar funcionário:', insertError);
-        App.showToast('Erro ao salvar funcionário.', 'error');
-        return;
-      }
+      funcionario = novo;
     }
 
-    const funcionarioId = funcionario.id;
-
+    // — Verifica se já está vinculado ao evento —
     const jaVinculado = App.state.funcionariosEventos.some(
-      (vinculo) =>
-        vinculo.evento_id === eventoId &&
-        vinculo.funcionario_id === funcionarioId
+      (v) => v.evento_id === eventoId && v.funcionario_id === funcionario.id
     );
 
     if (jaVinculado) {
-      App.showToast('Esse funcionário já está vinculado a esse evento.', 'warning');
+      App.showToast(
+        `${App.escapeHtml(nome)} já está vinculado a este evento.`,
+        'warning'
+      );
       return;
     }
 
-    const novoVinculo = {
-      id: App.createId(),
-      evento_id: eventoId,
-      funcionario_id: funcionarioId,
-      registrado_em: new Date().toISOString()
+    // — Cria o vínculo funcionário ↔ evento —
+    const vinculo = {
+      id:             App.createId(),
+      evento_id:      eventoId,
+      funcionario_id: funcionario.id,
+      registrado_em:  new Date().toISOString(),
     };
 
     const { error: vinculoError } = await App.db
       .from('funcionarios_eventos')
-      .insert([novoVinculo]);
+      .insert([vinculo]);
 
-    if (vinculoError) {
-      console.error('Erro ao vincular funcionário ao evento:', vinculoError);
-      App.showToast('Erro ao vincular funcionário ao evento.', 'error');
-      return;
-    }
+    if (vinculoError) throw new Error(`Erro ao vincular funcionário: ${vinculoError.message}`);
 
     App.dom.formFuncionario?.reset();
-
     await App.refreshAfterChange('funcionarios');
-    App.showToast('Funcionário cadastrado e vinculado ao evento com sucesso.', 'success');
-  } catch (error) {
-    console.error('Erro inesperado ao salvar funcionário:', error);
-    App.showToast('Não foi possível salvar o funcionário.', 'error');
+    App.showToast(`${nome} cadastrado e vinculado ao evento com sucesso.`, 'success');
+
+  } catch (err) {
+    console.error('[Employees] Erro ao salvar funcionário:', err);
+    App.showToast(err.message || 'Não foi possível salvar o funcionário.', 'error');
+
+  } finally {
+    App._setButtonLoading(submitBtn, false, 'Salvar funcionário no evento');
   }
 };
 
+// ------------------------------------------------------------
+// Renderiza a lista de funcionários com filtro de busca
+// ------------------------------------------------------------
 App.renderEmployeeList = function () {
-  const query = App.dom.buscaFuncionarios?.value.trim().toLowerCase() || '';
+  const container = App.dom.listaFuncionarios;
+  if (!container) return;
 
-  const funcionariosFiltrados = [...App.state.funcionarios].filter((funcionario) => {
-    const textoBusca = [
-      funcionario.nome,
-      funcionario.cargo,
-      funcionario.telefone || '',
-      funcionario.observacoes || ''
-    ].join(' ').toLowerCase();
+  const query = App.normalizeText(App.dom.buscaFuncionarios?.value.trim() || '');
 
-    return textoBusca.includes(query);
+  const lista = App.state.funcionarios.filter((f) => {
+    if (!query) return true;
+    const texto = App.normalizeText([
+      f.nome,
+      f.cargo,
+      f.telefone    || '',
+      f.observacoes || '',
+    ].join(' '));
+    return texto.includes(query);
   });
 
-  if (!funcionariosFiltrados.length) {
-    App.renderEmptyState(App.dom.listaFuncionarios, 'Nenhum funcionário encontrado.');
+  if (!lista.length) {
+    App.renderEmptyState(
+      container,
+      query ? 'Nenhum funcionário encontrado para essa busca.' : 'Nenhum funcionário cadastrado ainda.'
+    );
     return;
   }
 
-  App.dom.listaFuncionarios.innerHTML = funcionariosFiltrados.map((funcionario) => {
-    const totalParticipacoes = App.state.funcionariosEventos.filter(
-      (vinculo) => vinculo.funcionario_id === funcionario.id
-    ).length;
+  // Mapa de contagem de participações por funcionário (O(n) único)
+  const participacoes = App.state.funcionariosEventos.reduce((acc, v) => {
+    acc[v.funcionario_id] = (acc[v.funcionario_id] || 0) + 1;
+    return acc;
+  }, {});
 
-    return `
-      <div class="list-item">
-        <div>
-          <h4>${App.escapeHtml(funcionario.nome)}</h4>
-          <p>
-            <strong>Cargo:</strong> ${App.escapeHtml(funcionario.cargo || '—')}
-            ${
-              funcionario.telefone
-                ? ` • <strong>Telefone:</strong> ${App.escapeHtml(funcionario.telefone)}`
-                : ''
-            }
-          </p>
-          <p>
-            ${
-              funcionario.observacoes
-                ? App.escapeHtml(funcionario.observacoes)
-                : 'Sem observações cadastradas.'
-            }
-          </p>
-          <div class="chips">
-            <span class="chip">${totalParticipacoes} evento(s)</span>
-          </div>
+  container.innerHTML = lista
+    .map((f) => App._renderEmployeeItem(f, participacoes[f.id] || 0))
+    .join('');
+};
+
+// ------------------------------------------------------------
+// Template de um item da lista de funcionários
+// ------------------------------------------------------------
+App._renderEmployeeItem = function (f, totalEventos) {
+  const telefoneHtml = f.telefone
+    ? `<a href="tel:${App.escapeHtml(f.telefone)}" class="link-discreto">
+         ${App.escapeHtml(f.telefone)}
+       </a>`
+    : null;
+
+  const infoSecundaria = [
+    `<strong>Cargo:</strong> ${App.escapeHtml(f.cargo || '—')}`,
+    telefoneHtml ? `<strong>Tel:</strong> ${telefoneHtml}` : null,
+  ].filter(Boolean).join(' • ');
+
+  return `
+    <div class="list-item" data-id="${App.escapeHtml(f.id)}">
+      <div class="list-item-body">
+        <h4>${App.escapeHtml(f.nome)}</h4>
+
+        <p class="list-item-meta">${infoSecundaria}</p>
+
+        ${f.observacoes
+          ? `<p class="list-item-obs">${App.escapeHtml(f.observacoes)}</p>`
+          : ''}
+
+        <div class="chips">
+          <span class="chip">${totalEventos} evento${totalEventos !== 1 ? 's' : ''}</span>
         </div>
+      </div>
 
+      <div class="list-item-actions">
         <button
           class="btn-danger"
           type="button"
           data-action="delete-employee"
-          data-id="${funcionario.id}"
+          data-id="${App.escapeHtml(f.id)}"
+          aria-label="Excluir ${App.escapeHtml(f.nome)}"
         >
           Excluir
         </button>
       </div>
-    `;
-  }).join('');
+    </div>
+  `;
 };
 
+// ------------------------------------------------------------
+// Exclui um funcionário e todos os seus vínculos
+// ------------------------------------------------------------
 App.deleteEmployee = async function (id) {
   if (!App.ensureSupabaseReady()) return;
 
   const funcionario = App.getEmployeeById(id);
-  if (!funcionario) return;
+  if (!funcionario) {
+    App.showToast('Funcionário não encontrado.', 'error');
+    return;
+  }
 
-  const confirmou = await App.askConfirm({
-    title: 'Excluir funcionário',
-    message: `Excluir "${funcionario.nome}" da base? As participações dele também serão removidas.`,
-    confirmText: 'Excluir funcionário',
-    cancelText: 'Cancelar',
-    tone: 'danger'
-  });
+  const totalVinculos = App.state.funcionariosEventos.filter(
+    (v) => v.funcionario_id === id
+  ).length;
 
+  const msg = totalVinculos > 0
+    ? `Excluir "${funcionario.nome}"? Ele está vinculado a ${totalVinculos} evento(s). Tudo será removido.`
+    : `Excluir "${funcionario.nome}" da base de funcionários?`;
+
+  const confirmou = await App.confirm(msg, 'Excluir funcionário');
   if (!confirmou) return;
 
   try {
-    const { error: vinculosError } = await App.db
-      .from('funcionarios_eventos')
-      .delete()
-      .eq('funcionario_id', id);
+    // Remove vínculos primeiro (integridade referencial)
+    if (totalVinculos > 0) {
+      const { error: vinculosError } = await App.db
+        .from('funcionarios_eventos')
+        .delete()
+        .eq('funcionario_id', id);
 
-    if (vinculosError) {
-      console.error('Erro ao remover vínculos do funcionário:', vinculosError);
-      App.showToast('Erro ao remover participações do funcionário.', 'error');
-      return;
+      if (vinculosError) throw new Error(`Erro ao remover vínculos: ${vinculosError.message}`);
     }
 
-    const { error: funcionarioError } = await App.db
+    // Remove o funcionário
+    const { error } = await App.db
       .from('funcionarios')
       .delete()
       .eq('id', id);
 
-    if (funcionarioError) {
-      console.error('Erro ao excluir funcionário:', funcionarioError);
-      App.showToast('Erro ao excluir funcionário.', 'error');
-      return;
-    }
+    if (error) throw new Error(`Erro ao excluir funcionário: ${error.message}`);
 
     await App.refreshAfterChange('funcionarios');
-    App.showToast('Funcionário excluído com sucesso.', 'success');
-  } catch (error) {
-    console.error('Erro inesperado ao excluir funcionário:', error);
-    App.showToast('Não foi possível excluir o funcionário.', 'error');
+    App.showToast(`${funcionario.nome} foi excluído com sucesso.`, 'success');
+
+  } catch (err) {
+    console.error('[Employees] Erro ao excluir funcionário:', err);
+    App.showToast(err.message || 'Não foi possível excluir o funcionário.', 'error');
   }
+};
+
+// ------------------------------------------------------------
+// Popula os selects de evento nos formulários
+// ------------------------------------------------------------
+App.populateEmployeeEventSelect = function () {
+  const select = App.dom.funcionarioEvento;
+  if (!select) return;
+
+  const atual = select.value;
+
+  select.innerHTML = '<option value="">Selecione um evento</option>';
+
+  App.state.eventos.forEach((evento) => {
+    const opt = document.createElement('option');
+    opt.value       = evento.id;
+    opt.textContent = `${App.escapeHtml(evento.nome)} — ${App.formatDate(evento.data_realizacao)}`;
+    select.appendChild(opt);
+  });
+
+  // Mantém a seleção anterior se ainda existir
+  if (atual) select.value = atual;
 };

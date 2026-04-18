@@ -1,120 +1,160 @@
+// ============================================================
+// dom.js — Cache de elementos, navegação e controle de UI
+// ============================================================
+
 window.App = window.App || {};
 
-App.dom = {};
-
+// ------------------------------------------------------------
+// Cache de todos os elementos do DOM
+// ------------------------------------------------------------
 App.cacheDom = function () {
+  const get = (id) => {
+    const el = document.getElementById(id);
+    if (!el) console.warn(`[DOM] Elemento não encontrado: #${id}`);
+    return el;
+  };
+
   App.dom = {
-    sidebar: document.getElementById('sidebar'),
-    mobileMenuBtn: document.getElementById('mobileMenuBtn'),
+    // Layout / navegação
+    sidebar:       get('sidebar'),
+    mobileMenuBtn: get('mobileMenuBtn'),
+    navLinks:      document.querySelectorAll('.nav-link'),
 
-    authScreen: document.getElementById('authScreen'),
-    appShell: document.getElementById('appShell'),
-    loginForm: document.getElementById('loginForm'),
-    loginEmail: document.getElementById('loginEmail'),
-    loginPassword: document.getElementById('loginPassword'),
-    btnLogout: document.getElementById('btnLogout'),
-    currentUserEmail: document.getElementById('currentUserEmail'),
+    // Autenticação
+    authScreen:       get('authScreen'),
+    appShell:         get('appShell'),
+    loginForm:        get('loginForm'),
+    loginEmail:       get('loginEmail'),
+    loginPassword:    get('loginPassword'),
+    btnLogout:        get('btnLogout'),
+    currentUserEmail: get('currentUserEmail'),
 
-    btnExportar: document.getElementById('btnExportar'),
-    btnLimparTudo: document.getElementById('btnLimparTudo'),
+    // Ações do topo
+    btnExportar:   get('btnExportar'),
+    btnLimparTudo: get('btnLimparTudo'),
 
-    formEvento: document.getElementById('formEvento'),
-    formPessoa: document.getElementById('formPessoa'),
-    formFuncionario: document.getElementById('formFuncionario'),
+    // Formulários
+    formEvento:      get('formEvento'),
+    formPessoa:      get('formPessoa'),
+    formFuncionario: get('formFuncionario'),
 
-    eventoNome: document.getElementById('eventoNome'),
-    eventoData: document.getElementById('eventoData'),
-    eventoLocal: document.getElementById('eventoLocal'),
-    eventoObs: document.getElementById('eventoObs'),
+    // Campos — Evento
+    eventoNome:  get('eventoNome'),
+    eventoData:  get('eventoData'),
+    eventoLocal: get('eventoLocal'),
+    eventoObs:   get('eventoObs'),
 
-    pessoaNome: document.getElementById('pessoaNome'),
-    pessoaPlaca: document.getElementById('pessoaPlaca'),
-    pessoaTelefone: document.getElementById('pessoaTelefone'),
-    pessoaEmail: document.getElementById('pessoaEmail'),
-    pessoaEvento: document.getElementById('pessoaEvento'),
+    // Campos — Pessoa
+    pessoaNome:      get('pessoaNome'),
+    pessoaPlaca:     get('pessoaPlaca'),
+    pessoaTelefone:  get('pessoaTelefone'),
+    pessoaEmail:     get('pessoaEmail'),
+    pessoaEvento:    get('pessoaEvento'),
 
-    funcionarioNome: document.getElementById('funcionarioNome'),
-    funcionarioCargo: document.getElementById('funcionarioCargo'),
-    funcionarioTelefone: document.getElementById('funcionarioTelefone'),
-    funcionarioEvento: document.getElementById('funcionarioEvento'),
-    funcionarioObs: document.getElementById('funcionarioObs'),
+    // Campos — Funcionário
+    funcionarioNome:      get('funcionarioNome'),
+    funcionarioCargo:     get('funcionarioCargo'),
+    funcionarioTelefone:  get('funcionarioTelefone'),
+    funcionarioEvento:    get('funcionarioEvento'),
+    funcionarioObs:       get('funcionarioObs'),
 
-    buscaEventos: document.getElementById('buscaEventos'),
-    buscaPessoas: document.getElementById('buscaPessoas'),
-    buscaFuncionarios: document.getElementById('buscaFuncionarios'),
-    buscaHistorico: document.getElementById('buscaHistorico'),
+    // Buscas
+    buscaEventos:      get('buscaEventos'),
+    buscaPessoas:      get('buscaPessoas'),
+    buscaFuncionarios: get('buscaFuncionarios'),
+    buscaHistorico:    get('buscaHistorico'),
 
-    listaEventos: document.getElementById('listaEventos'),
-    listaPessoas: document.getElementById('listaPessoas'),
-    listaFuncionarios: document.getElementById('listaFuncionarios'),
-    listaHistorico: document.getElementById('listaHistorico'),
-    listaAgendaHoje: document.getElementById('listaAgendaHoje'),
-    listaProximosEventos: document.getElementById('listaProximosEventos'),
+    // Listas
+    listaEventos:         get('listaEventos'),
+    listaPessoas:         get('listaPessoas'),
+    listaFuncionarios:    get('listaFuncionarios'),
+    listaHistorico:       get('listaHistorico'),
+    listaAgendaHoje:      get('listaAgendaHoje'),
+    listaProximosEventos: get('listaProximosEventos'),
 
-    statEventos: document.getElementById('statEventos'),
-    statEventosHoje: document.getElementById('statEventosHoje'),
-    statProximos: document.getElementById('statProximos'),
-    statFuncionarios: document.getElementById('statFuncionarios'),
+    // Stats do dashboard
+    statEventos:     get('statEventos'),
+    statEventosHoje: get('statEventosHoje'),
+    statProximos:    get('statProximos'),
+    statFuncionarios: get('statFuncionarios'),
 
-    btnLimparEvento: document.getElementById('btnLimparEvento'),
-    btnLimparPessoa: document.getElementById('btnLimparPessoa'),
-    btnLimparFuncionario: document.getElementById('btnLimparFuncionario'),
+    // Botões de limpar campos
+    btnLimparEvento:      get('btnLimparEvento'),
+    btnLimparPessoa:      get('btnLimparPessoa'),
+    btnLimparFuncionario: get('btnLimparFuncionario'),
 
-    navLinks: document.querySelectorAll('.nav-link'),
-
+    // Views
     views: {
-      dashboard: document.getElementById('view-dashboard'),
-      fluxo: document.getElementById('view-fluxo'),
-      eventos: document.getElementById('view-eventos'),
-      pessoas: document.getElementById('view-pessoas'),
-      funcionarios: document.getElementById('view-funcionarios'),
-      historico: document.getElementById('view-historico')
+      dashboard:    get('view-dashboard'),
+      fluxo:        get('view-fluxo'),
+      eventos:      get('view-eventos'),
+      pessoas:      get('view-pessoas'),
+      funcionarios: get('view-funcionarios'),
+      historico:    get('view-historico'),
     },
 
-    exportModal: document.getElementById('exportModal'),
-    exportEventoSelect: document.getElementById('exportEventoSelect'),
-    btnCloseExportModal: document.getElementById('btnCloseExportModal'),
-    btnConfirmExport: document.getElementById('btnConfirmExport'),
+    // Modal: Exportar
+    exportModal:          get('exportModal'),
+    exportEventoSelect:   get('exportEventoSelect'),
+    btnCloseExportModal:  get('btnCloseExportModal'),
+    btnConfirmExport:     get('btnConfirmExport'),
 
-    editPessoaModal: document.getElementById('editPessoaModal'),
-    editPessoaForm: document.getElementById('editPessoaForm'),
-    editPessoaId: document.getElementById('editPessoaId'),
-    editPessoaNome: document.getElementById('editPessoaNome'),
-    editPessoaPlaca: document.getElementById('editPessoaPlaca'),
-    editPessoaTelefone: document.getElementById('editPessoaTelefone'),
-    editPessoaEmail: document.getElementById('editPessoaEmail'),
-    btnCancelEditPessoa: document.getElementById('btnCancelEditPessoa'),
+    // Modal: Editar pessoa
+    editPessoaModal:      get('editPessoaModal'),
+    editPessoaForm:       get('editPessoaForm'),
+    editPessoaId:         get('editPessoaId'),
+    editPessoaNome:       get('editPessoaNome'),
+    editPessoaPlaca:      get('editPessoaPlaca'),
+    editPessoaTelefone:   get('editPessoaTelefone'),
+    editPessoaEmail:      get('editPessoaEmail'),
+    btnCancelEditPessoa:  get('btnCancelEditPessoa'),
 
-    confirmModal: document.getElementById('confirmModal'),
-    confirmTitle: document.getElementById('confirmModalTitle'),
-    confirmMessage: document.getElementById('confirmModalMessage'),
-    btnCancelConfirmModal: document.getElementById('btnCancelConfirmModal'),
-    btnAcceptConfirmModal: document.getElementById('btnAcceptConfirmModal')
+    // Modal: Confirmação genérica
+    confirmModal:            get('confirmModal'),
+    confirmTitle:            get('confirmModalTitle'),
+    confirmMessage:          get('confirmModalMessage'),
+    btnCancelConfirmModal:   get('btnCancelConfirmModal'),
+    btnAcceptConfirmModal:   get('btnAcceptConfirmModal'),
   };
 };
 
+// ------------------------------------------------------------
+// Navegação entre views
+// ------------------------------------------------------------
 App.setView = function (viewName) {
   Object.entries(App.dom.views).forEach(([key, section]) => {
     if (!section) return;
     section.classList.toggle('hidden', key !== viewName);
   });
 
-  App.dom.navLinks.forEach((button) => {
-    button.classList.toggle('active', button.dataset.view === viewName);
+  App.dom.navLinks.forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.view === viewName);
+    btn.setAttribute('aria-current', btn.dataset.view === viewName ? 'page' : 'false');
   });
 
+  // Fecha sidebar mobile ao navegar
   App.dom.sidebar?.classList.remove('open');
+
+  // Rola o conteúdo para o topo ao trocar de view
+  document.querySelector('.content')?.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 App.toggleSidebar = function () {
-  App.dom.sidebar?.classList.toggle('open');
+  const isOpen = App.dom.sidebar?.classList.toggle('open');
+  App.dom.mobileMenuBtn?.setAttribute('aria-expanded', String(isOpen));
 };
 
+// ------------------------------------------------------------
+// Tela de autenticação vs. app principal
+// ------------------------------------------------------------
 App.showAuth = function () {
   App.dom.authScreen?.classList.remove('hidden');
   App.dom.appShell?.classList.add('hidden');
   App.dom.btnLogout?.classList.add('hidden');
   App.dom.currentUserEmail?.classList.add('hidden');
+
+  // Foca no campo de e-mail ao exibir a tela de login
+  setTimeout(() => App.dom.loginEmail?.focus(), 50);
 };
 
 App.showApp = function () {
@@ -123,41 +163,111 @@ App.showApp = function () {
   App.dom.btnLogout?.classList.remove('hidden');
 };
 
+// ------------------------------------------------------------
+// Badge do usuário logado
+// ------------------------------------------------------------
 App.updateCurrentUserBadge = function (email = '') {
-  if (!App.dom.currentUserEmail) return;
+  const el = App.dom.currentUserEmail;
+  if (!el) return;
 
   if (email) {
-    App.dom.currentUserEmail.textContent = email;
-    App.dom.currentUserEmail.classList.remove('hidden');
+    el.textContent = email;
+    el.classList.remove('hidden');
   } else {
-    App.dom.currentUserEmail.textContent = '';
-    App.dom.currentUserEmail.classList.add('hidden');
+    el.textContent = '';
+    el.classList.add('hidden');
   }
 };
 
+// ------------------------------------------------------------
+// Estado vazio nas listas
+// ------------------------------------------------------------
 App.renderEmptyState = function (element, message) {
   if (!element) return;
   element.innerHTML = `<div class="empty">${App.escapeHtml(message)}</div>`;
 };
 
+// ------------------------------------------------------------
+// Modais
+// ------------------------------------------------------------
 App.openModal = function (modal) {
   if (!modal) return;
+
   modal.classList.remove('hidden');
   document.body.classList.add('modal-open');
+
+  // Foca no primeiro campo interativo do modal (acessibilidade)
+  const focusable = modal.querySelector(
+    'input:not([type="hidden"]), select, textarea, button:not([disabled])'
+  );
+  setTimeout(() => focusable?.focus(), 50);
+
+  // Fecha ao clicar no overlay (fora do painel)
+  modal._overlayClickHandler = (e) => {
+    if (e.target === modal) App.closeModal(modal);
+  };
+  modal.addEventListener('click', modal._overlayClickHandler);
 };
 
 App.closeModal = function (modal) {
   if (!modal) return;
+
   modal.classList.add('hidden');
 
-  const opened = document.querySelector('.modal-overlay:not(.hidden)');
-  if (!opened) {
+  // Remove o listener de overlay para evitar acúmulo
+  if (modal._overlayClickHandler) {
+    modal.removeEventListener('click', modal._overlayClickHandler);
+    delete modal._overlayClickHandler;
+  }
+
+  // Remove a classe do body apenas se não houver outros modais abertos
+  const stillOpen = document.querySelector('.modal-overlay:not(.hidden)');
+  if (!stillOpen) {
     document.body.classList.remove('modal-open');
   }
 };
 
 App.closeAllModals = function () {
-  App.closeModal(App.dom.exportModal);
-  App.closeModal(App.dom.editPessoaModal);
-  App.closeModal(App.dom.confirmModal);
+  [
+    App.dom.exportModal,
+    App.dom.editPessoaModal,
+    App.dom.confirmModal,
+  ].forEach(App.closeModal);
 };
+
+// ------------------------------------------------------------
+// Modal de confirmação genérico (reutilizável)
+// ------------------------------------------------------------
+/**
+ * Abre o modal de confirmação e resolve uma Promise com true/false.
+ *
+ * Uso:
+ *   const confirmado = await App.confirm('Deseja excluir este evento?');
+ *   if (confirmado) { ... }
+ */
+App.confirm = function (message, title = 'Confirmar ação') {
+  return new Promise((resolve) => {
+    if (App.dom.confirmTitle)   App.dom.confirmTitle.textContent   = title;
+    if (App.dom.confirmMessage) App.dom.confirmMessage.textContent = message;
+
+    App.openModal(App.dom.confirmModal);
+
+    const cleanup = (result) => {
+      App.closeModal(App.dom.confirmModal);
+      App.dom.btnAcceptConfirmModal.removeEventListener('click', onAccept);
+      App.dom.btnCancelConfirmModal.removeEventListener('click', onCancel);
+      resolve(result);
+    };
+
+    const onAccept = () => cleanup(true);
+    const onCancel = () => cleanup(false);
+
+    App.dom.btnAcceptConfirmModal?.addEventListener('click', onAccept,  { once: true });
+    App.dom.btnCancelConfirmModal?.addEventListener('click', onCancel,  { once: true });
+  });
+};
+
+// Fecha todos os modais ao pressionar Escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') App.closeAllModals();
+});

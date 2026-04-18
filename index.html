@@ -2,10 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
-  />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#0b0b0b" />
   <meta
     name="description"
@@ -14,10 +11,14 @@
 
   <title>ÉVORA | Portaria Valet</title>
 
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
+
+  <!-- ═══════════════════════════════════════════
+       TELA DE LOGIN
+  ════════════════════════════════════════════ -->
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
       <h1>ÉVORA</h1>
@@ -57,28 +58,43 @@
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════════════
+       APP PRINCIPAL
+  ════════════════════════════════════════════ -->
   <div id="appShell" class="app hidden">
-    <aside class="sidebar" id="sidebar" aria-label="Menu lateral">
-      <div class="brand">
-        <h1>ÉVORA</h1>
-        <div class="brand-subtitle">PORTARIA valet</div>
-      </div>
 
-      <nav class="menu" aria-label="Navegação principal">
-        <button class="nav-link active" type="button" data-view="dashboard">Início</button>
-        <button class="nav-link" type="button" data-view="fluxo">Fluxo</button>
-        <button class="nav-link" type="button" data-view="eventos">Eventos</button>
-        <button class="nav-link" type="button" data-view="pessoas">Pessoas</button>
-        <button class="nav-link" type="button" data-view="funcionarios">Funcionários</button>
-        <button class="nav-link" type="button" data-view="historico">Histórico</button>
-      </nav>
+  <aside class="sidebar" id="sidebar">
 
-      <div class="sidebar-footer">
-        Plataforma online com autenticação, agenda compartilhada e exportação em Excel.
-      </div>
-    </aside>
+  <!-- Brand -->
+  <div class="brand">
+    <h1>ÉVORA</h1>
+    <p class="brand-subtitle">Gestão de Portaria</p>
+  </div>
+
+  <!-- Menu -->
+  <nav class="menu">
+    <button class="nav-link" data-view="dashboard">Dashboard</button>
+    <button class="nav-link" data-view="fluxo">Fluxo</button>
+    <button class="nav-link" data-view="eventos">Eventos</button>
+    <button class="nav-link" data-view="pessoas">Pessoas</button>
+    <button class="nav-link" data-view="funcionarios">Funcionários</button>
+    <button class="nav-link" data-view="historico">Histórico</button>
+  </nav>
+
+  <!-- Footer com usuário logado -->
+  <div class="sidebar-footer">
+    <p class="sidebar-footer-note">
+      Plataforma online com autenticação,
+      agenda compartilhada e exportação em Excel.
+    </p>
+
+    <div id="currentUserEmail" class="user-badge user-badge--sidebar hidden"></div>
+  </div>
+
+</aside>
 
     <main class="content">
+
       <button
         class="btn-secondary mobile-menu-toggle"
         id="mobileMenuBtn"
@@ -102,6 +118,8 @@
       </div>
 
       <div class="shell">
+
+        <!-- ── DASHBOARD ── -->
         <section id="view-dashboard">
           <div class="stats">
             <div class="card">
@@ -144,6 +162,7 @@
           </div>
         </section>
 
+        <!-- ── FLUXO ── -->
         <section id="view-fluxo" class="hidden">
           <div class="card">
             <h3 class="section-title">Fluxo da operação</h3>
@@ -185,6 +204,7 @@
           </div>
         </section>
 
+        <!-- ── EVENTOS ── -->
         <section id="view-eventos" class="hidden">
           <div class="panel-grid">
             <div class="card">
@@ -210,19 +230,12 @@
 
                   <div class="field">
                     <label for="eventoLocal">Local</label>
-                    <input
-                      id="eventoLocal"
-                      type="text"
-                      placeholder="Ex.: Salão principal"
-                    />
+                    <input id="eventoLocal" type="text" placeholder="Ex.: Salão principal" />
                   </div>
 
                   <div class="field full">
                     <label for="eventoObs">Observações</label>
-                    <textarea
-                      id="eventoObs"
-                      placeholder="Informações adicionais do evento"
-                    ></textarea>
+                    <textarea id="eventoObs" placeholder="Informações adicionais do evento"></textarea>
                   </div>
                 </div>
 
@@ -236,15 +249,10 @@
             <div class="card">
               <div class="toolbar">
                 <div>
-                  <h3 class="section-title" style="font-size: 28px; margin-bottom: 4px;">Agenda salva</h3>
-                  <p class="section-subtitle" style="margin: 0;">Eventos já cadastrados.</p>
+                  <h3 class="section-title section-title--lg">Agenda salva</h3>
+                  <p class="section-subtitle section-subtitle--flush">Eventos já cadastrados.</p>
                 </div>
-                <input
-                  class="search"
-                  id="buscaEventos"
-                  type="text"
-                  placeholder="Buscar evento"
-                />
+                <input class="search" id="buscaEventos" type="text" placeholder="Buscar evento" />
               </div>
 
               <div id="listaEventos" class="list"></div>
@@ -252,6 +260,7 @@
           </div>
         </section>
 
+        <!-- ── PESSOAS ── -->
         <section id="view-pessoas" class="hidden">
           <div class="panel-grid">
             <div class="card">
@@ -272,31 +281,17 @@
 
                   <div class="field">
                     <label for="pessoaPlaca">Placa do veículo</label>
-                    <input
-                      id="pessoaPlaca"
-                      type="text"
-                      placeholder="ABC1D23"
-                      required
-                    />
+                    <input id="pessoaPlaca" type="text" placeholder="ABC1D23" required />
                   </div>
 
                   <div class="field">
                     <label for="pessoaTelefone">Telefone</label>
-                    <input
-                      id="pessoaTelefone"
-                      type="tel"
-                      placeholder="(62) 99999-9999"
-                      required
-                    />
+                    <input id="pessoaTelefone" type="tel" placeholder="(62) 99999-9999" required />
                   </div>
 
                   <div class="field">
                     <label for="pessoaEmail">E-mail</label>
-                    <input
-                      id="pessoaEmail"
-                      type="email"
-                      placeholder="Opcional"
-                    />
+                    <input id="pessoaEmail" type="email" placeholder="Opcional" />
                   </div>
 
                   <div class="field">
@@ -321,8 +316,8 @@
             <div class="card">
               <div class="toolbar">
                 <div>
-                  <h3 class="section-title" style="font-size: 28px; margin-bottom: 4px;">Base de convidados</h3>
-                  <p class="section-subtitle" style="margin: 0;">Convidados já cadastrados.</p>
+                  <h3 class="section-title section-title--lg">Base de convidados</h3>
+                  <p class="section-subtitle section-subtitle--flush">Convidados já cadastrados.</p>
                 </div>
                 <input
                   class="search"
@@ -337,6 +332,7 @@
           </div>
         </section>
 
+        <!-- ── FUNCIONÁRIOS ── -->
         <section id="view-funcionarios" class="hidden">
           <div class="panel-grid">
             <div class="card">
@@ -357,21 +353,12 @@
 
                   <div class="field">
                     <label for="funcionarioCargo">Cargo / função</label>
-                    <input
-                      id="funcionarioCargo"
-                      type="text"
-                      placeholder="Ex.: Manobrista"
-                      required
-                    />
+                    <input id="funcionarioCargo" type="text" placeholder="Ex.: Manobrista" required />
                   </div>
 
                   <div class="field">
                     <label for="funcionarioTelefone">Telefone</label>
-                    <input
-                      id="funcionarioTelefone"
-                      type="tel"
-                      placeholder="Opcional"
-                    />
+                    <input id="funcionarioTelefone" type="tel" placeholder="Opcional" />
                   </div>
 
                   <div class="field">
@@ -404,8 +391,8 @@
             <div class="card">
               <div class="toolbar">
                 <div>
-                  <h3 class="section-title" style="font-size: 28px; margin-bottom: 4px;">Base de funcionários</h3>
-                  <p class="section-subtitle" style="margin: 0;">Equipe já cadastrada.</p>
+                  <h3 class="section-title section-title--lg">Base de funcionários</h3>
+                  <p class="section-subtitle section-subtitle--flush">Equipe já cadastrada.</p>
                 </div>
                 <input
                   class="search"
@@ -420,16 +407,16 @@
           </div>
         </section>
 
+        <!-- ── HISTÓRICO ── -->
         <section id="view-historico" class="hidden">
           <div class="card">
             <div class="toolbar">
               <div>
                 <h3 class="section-title">Histórico</h3>
-                <p class="section-subtitle" style="margin-bottom: 0;">
+                <p class="section-subtitle section-subtitle--flush">
                   Eventos com convidados e funcionários vinculados.
                 </p>
               </div>
-
               <input
                 class="search"
                 id="buscaHistorico"
@@ -441,10 +428,17 @@
             <div id="listaHistorico" class="list"></div>
           </div>
         </section>
+
       </div>
     </main>
   </div>
-    <div
+
+  <!-- ═══════════════════════════════════════════
+       MODAIS
+  ════════════════════════════════════════════ -->
+
+  <!-- Modal: Exportar -->
+  <div
     id="exportModal"
     class="modal-overlay hidden"
     role="dialog"
@@ -458,7 +452,6 @@
 
       <div class="modal-body">
         <p class="modal-text">Escolha o evento que deseja exportar.</p>
-
         <div class="field">
           <label for="exportEventoSelect">Evento</label>
           <select id="exportEventoSelect">
@@ -474,6 +467,7 @@
     </div>
   </div>
 
+  <!-- Modal: Editar convidado -->
   <div
     id="editPessoaModal"
     class="modal-overlay hidden"
@@ -521,83 +515,7 @@
     </div>
   </div>
 
-    <div
-    id="exportModal"
-    class="modal-overlay hidden"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="exportModalTitle"
-  >
-    <div class="modal-panel">
-      <div class="modal-header">
-        <h3 id="exportModalTitle" class="modal-title">Exportar evento</h3>
-      </div>
-
-      <div class="modal-body">
-        <p class="modal-text">Escolha o evento que deseja exportar.</p>
-
-        <div class="field">
-          <label for="exportEventoSelect">Evento</label>
-          <select id="exportEventoSelect">
-            <option value="">Selecione um evento</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="modal-actions">
-        <button class="btn-secondary" type="button" id="btnCloseExportModal">Cancelar</button>
-        <button class="btn" type="button" id="btnConfirmExport">Exportar</button>
-      </div>
-    </div>
-  </div>
-
-  <div
-    id="editPessoaModal"
-    class="modal-overlay hidden"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="editPessoaModalTitle"
-  >
-    <div class="modal-panel">
-      <div class="modal-header">
-        <h3 id="editPessoaModalTitle" class="modal-title">Editar convidado</h3>
-      </div>
-
-      <form id="editPessoaForm">
-        <input type="hidden" id="editPessoaId" />
-
-        <div class="modal-body">
-          <div class="form-grid">
-            <div class="field full">
-              <label for="editPessoaNome">Nome</label>
-              <input id="editPessoaNome" type="text" required />
-            </div>
-
-            <div class="field">
-              <label for="editPessoaPlaca">Placa</label>
-              <input id="editPessoaPlaca" type="text" required />
-            </div>
-
-            <div class="field">
-              <label for="editPessoaTelefone">Telefone</label>
-              <input id="editPessoaTelefone" type="text" required />
-            </div>
-
-            <div class="field full">
-              <label for="editPessoaEmail">E-mail</label>
-              <input id="editPessoaEmail" type="email" />
-            </div>
-          </div>
-        </div>
-
-        <div class="modal-actions">
-          <button class="btn-secondary" type="button" id="btnCancelEditPessoa">Cancelar</button>
-          <button class="btn" type="submit">Salvar alterações</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
+  <!-- Modal: Confirmação genérica -->
   <div
     id="confirmModal"
     class="modal-overlay hidden"
@@ -622,23 +540,16 @@
       </div>
     </div>
   </div>
-  
+
+  <!-- Toast container -->
   <div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- ═══════════════════════════════════════════
+       SCRIPTS
+  ════════════════════════════════════════════ -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
 
   <script src="js/config.js" defer></script>
-<script src="js/state.js" defer></script>
-<script src="js/utils.js" defer></script>
-<script src="js/dom.js" defer></script>
-<script src="js/auth.js" defer></script>
-<script src="js/data.js" defer></script>
-<script src="js/events.js" defer></script>
-<script src="js/people.js" defer></script>
-<script src="js/employees.js" defer></script>
-<script src="js/history.js" defer></script>
-<script src="js/export.js" defer></script>
-<script src="js/main.js" defer></script>
-</body>
-</html>
+  <script src="js/
+

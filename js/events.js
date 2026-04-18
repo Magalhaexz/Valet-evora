@@ -1,279 +1,311 @@
+// ============================================================
+// events.js — Cadastro, listagem, agenda, stats e exclusão de eventos
+// ============================================================
+
 window.App = window.App || {};
 
+// ------------------------------------------------------------
+// Salva um novo evento no Supabase
+// ------------------------------------------------------------
 App.handleSaveEvent = async function (event) {
   event.preventDefault();
-
   if (!App.ensureSupabaseReady()) return;
 
-  const nome = App.dom.eventoNome?.value.trim() || '';
-  const dataRealizacao = App.dom.eventoData?.value || '';
-  const local = App.dom.eventoLocal?.value.trim() || '';
-  const observacoes = App.dom.eventoObs?.value.trim() || '';
+  const nome           = App.dom.eventoNome?.value.trim() || '';
+  const dataRealizacao = App.dom.eventoData?.value        || '';
+  const local          = App.dom.eventoLocal?.value.trim() || '';
+  const observacoes    = App.dom.eventoObs?.value.trim()  || '';
 
   if (!nome || !dataRealizacao) {
     App.showToast('Preencha o nome e a data do evento.', 'warning');
     return;
   }
 
-  const novoEvento = {
-    id: App.createId(),
-    nome,
-    data_realizacao: dataRealizacao,
-    local,
-    observacoes,
-    criado_em: new Date().toISOString()
-  };
+  // Impede datas claramente inválidas
+  if (isNaN(new Date(dataRealizacao).getTime())) {
+    App.showToast('Data inválida. Verifique o campo de data.', 'warning');
+    return;
+  }
+
+  const submitBtn = App.dom.formEvento?.querySelector('button[type="submit"]');
+  App._setButtonLoading(submitBtn, true, 'Salvando…');
 
   try {
-    const { error } = await App.db.from('eventos').insert([novoEvento]);
+    const novoEvento = {
+      id:              App.createId(),
+      nome,
+      data_realizacao: dataRealizacao,
+      local,
+      observacoes,
+      criado_em:       new Date().toISOString(),
+    };
 
-    if (error) {
-      console.error('Erro ao salvar evento:', error);
-      App.showToast('Erro ao salvar evento.', 'error');
-      return;
-    }
+    const { error } = await App.db.from('eventos').insert([novoEvento]);
+    if (error) throw new Error(`Erro ao salvar evento: ${error.message}`);
 
     App.dom.formEvento?.reset();
     await App.refreshAfterChange('eventos');
-    App.showToast('Evento cadastrado com sucesso.', 'success');
-  } catch (error) {
-    console.error('Erro inesperado ao salvar evento:', error);
-    App.showToast('Não foi possível salvar o evento.', 'error');
+    App.showToast(`Evento "${nome}" cadastrado com sucesso.`, 'success');
+
+  } catch (err) {
+    console.error('[Events] Erro ao salvar evento:', err);
+    App.showToast(err.message || 'Não foi possível salvar o evento.', 'error');
+
+  } finally {
+    App._setButtonLoading(submitBtn, false, 'Salvar evento');
   }
 };
 
+// ------------------------------------------------------------
+// Popula os <select> de eventos nos formulários de pessoa e funcionário
+// Mantém a seleção atual se o evento ainda existir
+// ------------------------------------------------------------
 App.renderEventOptions = function () {
-  const pessoaEventoAtual = App.dom.pessoaEvento?.value || '';
-  const funcionarioEventoAtual = App.dom.funcionarioEvento?.value || '';
+  const selects = [
+    App.dom.pessoaEvento,
+    App.dom.funcionarioEvento,
+    App.dom.exportEventoSelect,
+  ].filter(Boolean);
 
-  if (App.dom.pessoaEvento) {
-    App.dom.pessoaEvento.innerHTML = '<option value="">Selecione um evento</option>';
-  }
-
-  if (App.dom.funcionarioEvento) {
-    App.dom.funcionarioEvento.innerHTML = '<option value="">Selecione um evento</option>';
-  }
+  // Guarda as seleções atuais
+  const anteriores = selects.map((s) => s.value);
 
   const eventosOrdenados = [...App.state.eventos].sort((a, b) =>
     String(a.data_realizacao).localeCompare(String(b.data_realizacao))
   );
 
-  eventosOrdenados.forEach((evento) => {
-    const texto = `${evento.nome} • ${App.formatDate(evento.data_realizacao)}`;
+  selects.forEach((select, i) => {
+    select.innerHTML = '<option value="">Selecione um evento</option>';
 
-    if (App.dom.pessoaEvento) {
-      const optionPessoa = document.createElement('option');
-      optionPessoa.value = evento.id;
-      optionPessoa.textContent = texto;
-      App.dom.pessoaEvento.appendChild(optionPessoa);
-    }
-
-    if (App.dom.funcionarioEvento) {
-      const optionFuncionario = document.createElement('option');
-      optionFuncionario.value = evento.id;
-      optionFuncionario.textContent = texto;
-      App.dom.funcionarioEvento.appendChild(optionFuncionario);
-    }
-  });
-
-  if (App.dom.pessoaEvento && pessoaEventoAtual) {
-    App.dom.pessoaEvento.value = pessoaEventoAtual;
-  }
-
-  if (App.dom.funcionarioEvento && funcionarioEventoAtual) {
-    App.dom.funcionarioEvento.value = funcionarioEventoAtual;
-  }
-};
-
-App.renderEventList = function () {
-  const query = App.dom.buscaEventos?.value.trim().toLowerCase() || '';
-
-  const eventos = [...App.state.eventos]
-    .sort((a, b) => String(a.data_realizacao).localeCompare(String(b.data_realizacao)))
-    .filter((evento) => {
-      const textoBusca = [
-        evento.nome,
-        evento.local,
-        evento.observacoes,
-        App.formatDate(evento.data_realizacao)
-      ].join(' ').toLowerCase();
-
-      return textoBusca.includes(query);
+    eventosOrdenados.forEach((evento) => {
+      const opt = document.createElement('option');
+      opt.value       = evento.id;
+      opt.textContent = `${evento.nome} • ${App.formatDate(evento.data_realizacao)}`;
+      select.appendChild(opt);
     });
 
-  if (!eventos.length) {
-    App.renderEmptyState(App.dom.listaEventos, 'Nenhum evento encontrado.');
+    // Restaura seleção anterior se o evento ainda existir
+    if (anteriores[i]) select.value = anteriores[i];
+  });
+};
+
+// ------------------------------------------------------------
+// Lista de eventos (view Eventos)
+// ------------------------------------------------------------
+App.renderEventList = function () {
+  const container = App.dom.listaEventos;
+  if (!container) return;
+
+  const query = App.normalizeText(App.dom.buscaEventos?.value.trim() || '');
+
+  const lista = [...App.state.eventos]
+    .sort((a, b) => String(a.data_realizacao).localeCompare(String(b.data_realizacao)))
+    .filter((evento) => {
+      if (!query) return true;
+      const texto = App.normalizeText([
+        evento.nome,
+        evento.local        || '',
+        evento.observacoes  || '',
+        App.formatDate(evento.data_realizacao),
+      ].join(' '));
+      return texto.includes(query);
+    });
+
+  if (!lista.length) {
+    App.renderEmptyState(
+      container,
+      query ? 'Nenhum evento encontrado para essa busca.' : 'Nenhum evento cadastrado ainda.'
+    );
     return;
   }
 
-  App.dom.listaEventos.innerHTML = eventos.map((evento) => {
-    const convidados = App.getPeopleByEvent(evento.id).length;
-    const equipe = App.getEmployeesByEvent(evento.id).length;
+  container.innerHTML = lista
+    .map((evento) => App._renderEventItem(evento))
+    .join('');
+};
 
-    return `
-      <div class="list-item">
-        <div>
-          <h4>${App.escapeHtml(evento.nome)}</h4>
-          <p>
-            <strong>Data:</strong> ${App.formatDate(evento.data_realizacao)}
-            ${evento.local ? ` • <strong>Local:</strong> ${App.escapeHtml(evento.local)}` : ''}
-          </p>
-          ${
-            evento.observacoes
-              ? `<p style="margin-top:6px;">${App.escapeHtml(evento.observacoes)}</p>`
-              : ''
-          }
-          <div class="chips">
-            <span class="chip">${convidados} convidado(s)</span>
-            <span class="chip">${equipe} funcionário(s)</span>
-          </div>
+// ------------------------------------------------------------
+// Template de item de evento (lista completa)
+// ------------------------------------------------------------
+App._renderEventItem = function (evento) {
+  const convidados = App.getPeopleByEvent(evento.id).length;
+  const equipe     = App.getEmployeesByEvent(evento.id).length;
+
+  return `
+    <div class="list-item" data-id="${App.escapeHtml(evento.id)}">
+      <div class="list-item-body">
+        <h4>${App.escapeHtml(evento.nome)}</h4>
+
+        <p class="list-item-meta">
+          <strong>Data:</strong> ${App.formatDate(evento.data_realizacao)}
+          ${evento.local
+            ? ` • <strong>Local:</strong> ${App.escapeHtml(evento.local)}`
+            : ''}
+        </p>
+
+        ${evento.observacoes
+          ? `<p class="list-item-obs">${App.escapeHtml(evento.observacoes)}</p>`
+          : ''}
+
+        <div class="chips">
+          <span class="chip">${convidados} convidado${convidados !== 1 ? 's' : ''}</span>
+          <span class="chip">${equipe} funcionário${equipe !== 1 ? 's' : ''}</span>
         </div>
+      </div>
 
+      <div class="list-item-actions">
         <button
           class="btn-danger"
           type="button"
           data-action="delete-event"
-          data-id="${evento.id}"
+          data-id="${App.escapeHtml(evento.id)}"
+          aria-label="Excluir evento ${App.escapeHtml(evento.nome)}"
         >
           Excluir
         </button>
       </div>
-    `;
-  }).join('');
+    </div>
+  `;
 };
 
+// ------------------------------------------------------------
+// Exclui um evento e todos os seus dados vinculados
+// ------------------------------------------------------------
 App.deleteEvent = async function (id) {
   if (!App.ensureSupabaseReady()) return;
 
   const evento = App.getEventById(id);
-  if (!evento) return;
+  if (!evento) {
+    App.showToast('Evento não encontrado.', 'error');
+    return;
+  }
 
-  const confirmou = await App.askConfirm({
-    title: 'Excluir evento',
-    message: `Excluir o evento "${evento.nome}"? Os convidados e funcionários vinculados também sairão do histórico.`,
-    confirmText: 'Excluir evento',
-    cancelText: 'Cancelar',
-    tone: 'danger'
-  });
+  const convidados = App.getPeopleByEvent(id).length;
+  const equipe     = App.getEmployeesByEvent(id).length;
 
+  const detalhes = [
+    convidados > 0 ? `${convidados} convidado${convidados !== 1 ? 's' : ''}` : null,
+    equipe > 0     ? `${equipe} funcionário${equipe !== 1 ? 's' : ''}` : null,
+  ].filter(Boolean).join(' e ');
+
+  const msg = detalhes
+    ? `Excluir "${evento.nome}"? ${detalhes} vinculados também serão removidos do histórico.`
+    : `Excluir o evento "${evento.nome}"? Esta ação não pode ser desfeita.`;
+
+  const confirmou = await App.confirm(msg, 'Excluir evento');
   if (!confirmou) return;
 
   try {
-    const { error: presencasError } = await App.db
-      .from('presencas')
-      .delete()
-      .eq('evento_id', id);
+    // Remove presenças e vínculos de funcionários em paralelo
+    const [presencasRes, funcionariosEventosRes] = await Promise.all([
+      App.db.from('presencas').delete().eq('evento_id', id),
+      App.db.from('funcionarios_eventos').delete().eq('evento_id', id),
+    ]);
 
-    if (presencasError) {
-      console.error('Erro ao remover presenças:', presencasError);
-      App.showToast('Erro ao remover convidados do evento.', 'error');
-      return;
+    if (presencasRes.error) {
+      throw new Error(`Erro ao remover presenças: ${presencasRes.error.message}`);
+    }
+    if (funcionariosEventosRes.error) {
+      throw new Error(`Erro ao remover vínculos de equipe: ${funcionariosEventosRes.error.message}`);
     }
 
-    const { error: funcionariosEventosError } = await App.db
-      .from('funcionarios_eventos')
-      .delete()
-      .eq('evento_id', id);
-
-    if (funcionariosEventosError) {
-      console.error('Erro ao remover vínculos da equipe:', funcionariosEventosError);
-      App.showToast('Erro ao remover equipe do evento.', 'error');
-      return;
-    }
-
-    const { error: eventoError } = await App.db
-      .from('eventos')
-      .delete()
-      .eq('id', id);
-
-    if (eventoError) {
-      console.error('Erro ao excluir evento:', eventoError);
-      App.showToast('Erro ao excluir evento.', 'error');
-      return;
-    }
+    // Remove o evento após limpar os vínculos
+    const { error } = await App.db.from('eventos').delete().eq('id', id);
+    if (error) throw new Error(`Erro ao excluir evento: ${error.message}`);
 
     await App.refreshAfterChange('eventos');
-    App.showToast('Evento excluído com sucesso.', 'success');
-  } catch (error) {
-    console.error('Erro inesperado ao excluir evento:', error);
-    App.showToast('Não foi possível excluir o evento.', 'error');
+    App.showToast(`Evento "${evento.nome}" excluído com sucesso.`, 'success');
+
+  } catch (err) {
+    console.error('[Events] Erro ao excluir evento:', err);
+    App.showToast(err.message || 'Não foi possível excluir o evento.', 'error');
   }
 };
 
+// ------------------------------------------------------------
+// Stats do dashboard
+// ------------------------------------------------------------
 App.renderStats = function () {
   const hoje = App.getTodayISO();
 
-  const totalEventos = App.state.eventos.length;
-  const eventosHoje = App.state.eventos.filter((evento) => evento.data_realizacao === hoje).length;
-  const proximosEventos = App.state.eventos.filter((evento) => evento.data_realizacao > hoje).length;
-  const totalFuncionarios = App.state.funcionarios.length;
+  const total        = App.state.eventos.length;
+  const hojeCount    = App.state.eventos.filter((e) => e.data_realizacao === hoje).length;
+  const proximos     = App.state.eventos.filter((e) => e.data_realizacao > hoje).length;
+  const funcionarios = App.state.funcionarios.length;
 
-  if (App.dom.statEventos) App.dom.statEventos.textContent = String(totalEventos);
-  if (App.dom.statEventosHoje) App.dom.statEventosHoje.textContent = String(eventosHoje);
-  if (App.dom.statProximos) App.dom.statProximos.textContent = String(proximosEventos);
-  if (App.dom.statFuncionarios) App.dom.statFuncionarios.textContent = String(totalFuncionarios);
+  const set = (el, val) => { if (el) el.textContent = String(val); };
+
+  set(App.dom.statEventos,      total);
+  set(App.dom.statEventosHoje,  hojeCount);
+  set(App.dom.statProximos,     proximos);
+  set(App.dom.statFuncionarios, funcionarios);
 };
 
+// ------------------------------------------------------------
+// Agenda do dashboard (hoje + próximos)
+// ------------------------------------------------------------
 App.renderAgenda = function () {
   const hoje = App.getTodayISO();
 
   const eventosHoje = [...App.state.eventos]
-    .filter((evento) => evento.data_realizacao === hoje)
-    .sort((a, b) => String(a.nome).localeCompare(String(b.nome)));
+    .filter((e) => e.data_realizacao === hoje)
+    .sort((a, b) => a.nome.localeCompare(b.nome));
 
   const proximosEventos = [...App.state.eventos]
-    .filter((evento) => evento.data_realizacao > hoje)
-    .sort((a, b) => String(a.data_realizacao).localeCompare(String(b.data_realizacao)))
+    .filter((e) => e.data_realizacao > hoje)
+    .sort((a, b) => a.data_realizacao.localeCompare(b.data_realizacao))
     .slice(0, 8);
 
-  if (!eventosHoje.length) {
-    App.renderEmptyState(App.dom.listaAgendaHoje, 'Nenhum evento cadastrado para hoje.');
-  } else if (App.dom.listaAgendaHoje) {
-    App.dom.listaAgendaHoje.innerHTML = eventosHoje.map((evento) => {
-      const convidados = App.getPeopleByEvent(evento.id).length;
-      const equipe = App.getEmployeesByEvent(evento.id).length;
+  App._renderAgendaSection(
+    App.dom.listaAgendaHoje,
+    eventosHoje,
+    'Nenhum evento cadastrado para hoje.',
+    () => 'Hoje'
+  );
 
-      return `
-        <div class="agenda-item">
-          <div>
-            <h4>${App.escapeHtml(evento.nome)}</h4>
-            <p>
-              ${evento.local ? `<strong>Local:</strong> ${App.escapeHtml(evento.local)} • ` : ''}
-              <strong>Convidados:</strong> ${convidados} •
-              <strong>Equipe:</strong> ${equipe}
-            </p>
-            ${
-              evento.observacoes
-                ? `<p style="margin-top:8px;">${App.escapeHtml(evento.observacoes)}</p>`
-                : ''
-            }
-          </div>
-          <span class="agenda-date">Hoje</span>
-        </div>
-      `;
-    }).join('');
+  App._renderAgendaSection(
+    App.dom.listaProximosEventos,
+    proximosEventos,
+    'Nenhum próximo evento cadastrado.',
+    (evento) => App.formatDate(evento.data_realizacao)
+  );
+};
+
+// ------------------------------------------------------------
+// Template de item de agenda (dashboard)
+// ------------------------------------------------------------
+App._renderAgendaSection = function (container, lista, emptyMsg, getLabel) {
+  if (!container) return;
+
+  if (!lista.length) {
+    App.renderEmptyState(container, emptyMsg);
+    return;
   }
 
-  if (!proximosEventos.length) {
-    App.renderEmptyState(App.dom.listaProximosEventos, 'Nenhum próximo evento cadastrado.');
-  } else if (App.dom.listaProximosEventos) {
-    App.dom.listaProximosEventos.innerHTML = proximosEventos.map((evento) => {
-      const convidados = App.getPeopleByEvent(evento.id).length;
-      const equipe = App.getEmployeesByEvent(evento.id).length;
+  container.innerHTML = lista.map((evento) => {
+    const convidados = App.getPeopleByEvent(evento.id).length;
+    const equipe     = App.getEmployeesByEvent(evento.id).length;
 
-      return `
-        <div class="agenda-item">
-          <div>
-            <h4>${App.escapeHtml(evento.nome)}</h4>
-            <p>
-              ${evento.local ? `<strong>Local:</strong> ${App.escapeHtml(evento.local)} • ` : ''}
-              <strong>Convidados:</strong> ${convidados} •
-              <strong>Equipe:</strong> ${equipe}
-            </p>
-          </div>
-          <span class="agenda-date">${App.formatDate(evento.data_realizacao)}</span>
+    return `
+      <div class="agenda-item">
+        <div class="agenda-item-body">
+          <h4>${App.escapeHtml(evento.nome)}</h4>
+
+          <p class="list-item-meta">
+            ${evento.local
+              ? `<strong>Local:</strong> ${App.escapeHtml(evento.local)} • `
+              : ''}
+            <strong>Convidados:</strong> ${convidados} •
+            <strong>Equipe:</strong> ${equipe}
+          </p>
+
+          ${evento.observacoes
+            ? `<p class="list-item-obs">${App.escapeHtml(evento.observacoes)}</p>`
+            : ''}
         </div>
-      `;
-    }).join('');
-  }
+
+        <span class="agenda-date">${App.escapeHtml(getLabel(evento))}</span>
+      </div>
+    `;
+  }).join('');
 };

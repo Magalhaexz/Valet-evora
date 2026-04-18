@@ -1,5 +1,12 @@
+// ============================================================
+// auth.js — Autenticação via Supabase
+// ============================================================
+
 window.App = window.App || {};
 
+// ------------------------------------------------------------
+// Bootstrap: verifica sessão ativa ao carregar o app
+// ------------------------------------------------------------
 App.bootstrapAuth = async function () {
   if (!App.ensureSupabaseReady(false)) {
     App.state.currentUser = null;
@@ -12,39 +19,47 @@ App.bootstrapAuth = async function () {
     const { data, error } = await App.db.auth.getSession();
 
     if (error) {
-      console.error('Erro ao obter sessão:', error);
+      console.error('[Auth] Erro ao obter sessão:', error);
       App.showToast('Erro ao iniciar autenticação.', 'error');
       App.showAuth();
       return;
     }
 
-    await App.applySession(data?.session || null);
+    await App.applySession(data?.session ?? null);
 
+    // Listener reativo para mudanças de sessão (login, logout, expiração)
     App.db.auth.onAuthStateChange(async (_event, session) => {
       await App.applySession(session);
     });
-  } catch (error) {
-    console.error('Erro no bootstrapAuth:', error);
+
+  } catch (err) {
+    console.error('[Auth] Erro inesperado no bootstrapAuth:', err);
     App.showToast('Falha ao iniciar autenticação.', 'error');
     App.showAuth();
   }
 };
 
+// ------------------------------------------------------------
+// Aplica ou limpa sessão — usado pelo bootstrap e pelo listener
+// ------------------------------------------------------------
 App.applySession = async function (session) {
-  App.state.currentUser = session?.user || null;
+  const user = session?.user ?? null;
+  App.state.currentUser = user;
 
-  if (App.state.currentUser) {
+  if (user) {
     App.showApp();
-    App.updateCurrentUserBadge(App.state.currentUser.email || 'Usuário');
+    App.updateCurrentUserBadge(user.email || 'Usuário');
 
     const loaded = await App.loadAllData(false);
 
     if (!loaded) {
-      console.warn('Sessão iniciada, mas os dados não puderam ser carregados.');
+      console.warn('[Auth] Sessão ativa, mas os dados não puderam ser carregados.');
+      App.showToast('Dados não carregados. Tente recarregar a página.', 'warning');
     }
 
     App.renderAll();
     App.startAutoRefresh();
+
   } else {
     App.stopAutoRefresh();
     App.clearState();
@@ -54,28 +69,33 @@ App.applySession = async function (session) {
   }
 };
 
+// ------------------------------------------------------------
+// Login com e-mail e senha
+// ------------------------------------------------------------
 App.handleLogin = async function (event) {
   event.preventDefault();
 
   if (!App.ensureSupabaseReady()) return;
 
-  const email = App.dom.loginEmail?.value.trim() || '';
-  const password = App.dom.loginPassword?.value || '';
+  const email    = App.dom.loginEmail?.value.trim() ?? '';
+  const password = App.dom.loginPassword?.value ?? '';
 
   if (!email || !password) {
     App.showToast('Preencha e-mail e senha.', 'warning');
     return;
   }
 
+  // Feedback visual no botão durante o request
+  const submitBtn = App.dom.loginForm?.querySelector('button[type="submit"]');
+  App._setLoginLoading(submitBtn, true);
+
   try {
-    const { data, error } = await App.db.auth.signInWithPassword({
-      email,
-      password
-    });
+    const { data, error } = await App.db.auth.signInWithPassword({ email, password });
 
     if (error) {
-      console.error('Erro no login:', error);
-      App.showToast(error.message || 'Login inválido. Verifique e-mail e senha.', 'error');
+      console.error('[Auth] Erro no login:', error);
+      const msg = App._translateAuthError(error.message);
+      App.showToast(msg, 'error');
       return;
     }
 
@@ -86,12 +106,18 @@ App.handleLogin = async function (event) {
     } else {
       App.showToast('Login realizado, mas a sessão não foi retornada.', 'warning');
     }
-  } catch (error) {
-    console.error('Erro inesperado no login:', error);
-    App.showToast('Não foi possível entrar agora.', 'error');
+
+  } catch (err) {
+    console.error('[Auth] Erro inesperado no login:', err);
+    App.showToast('Não foi possível entrar agora. Tente novamente.', 'error');
+  } finally {
+    App._setLoginLoading(submitBtn, false);
   }
 };
 
+// ------------------------------------------------------------
+// Logout
+// ------------------------------------------------------------
 App.handleLogout = async function () {
   if (!App.ensureSupabaseReady()) return;
 
@@ -99,15 +125,48 @@ App.handleLogout = async function () {
     const { error } = await App.db.auth.signOut();
 
     if (error) {
-      console.error('Erro ao sair:', error);
+      console.error('[Auth] Erro ao sair:', error);
       App.showToast('Erro ao sair da conta.', 'error');
       return;
     }
 
     App.showToast('Você saiu da conta.', 'success');
     await App.applySession(null);
-  } catch (error) {
-    console.error('Erro inesperado no logout:', error);
+
+  } catch (err) {
+    console.error('[Auth] Erro inesperado no logout:', err);
     App.showToast('Não foi possível sair agora.', 'error');
   }
+};
+
+// ------------------------------------------------------------
+// Helpers internos
+// ------------------------------------------------------------
+
+/**
+ * Ativa/desativa o estado de loading no botão de submit do login.
+ */
+App._setLoginLoading = function (btn, isLoading) {
+  if (!btn) return;
+  btn.disabled = isLoading;
+  btn.textContent = isLoading ? 'Entrando…' : 'Entrar';
+};
+
+/**
+ * Traduz mensagens de erro do Supabase para português.
+ */
+App._translateAuthError = function (message = '') {
+  const map = {
+    'Invalid login credentials':        'E-mail ou senha incorretos.',
+    'Email not confirmed':              'Confirme seu e-mail antes de entrar.',
+    'Too many requests':                'Muitas tentativas. Aguarde alguns minutos.',
+    'User not found':                   'Usuário não encontrado.',
+    'Password should be at least 6 characters': 'A senha deve ter ao menos 6 caracteres.',
+  };
+
+  for (const [key, translation] of Object.entries(map)) {
+    if (message.includes(key)) return translation;
+  }
+
+  return message || 'Erro de autenticação.';
 };

@@ -1,51 +1,35 @@
+// ============================================================
+// export.js — Exportação para Excel e limpeza da base
+// ============================================================
+
 window.App = window.App || {};
 
-App.buildSheetWithHeaders = function (headers, rows) {
-  const aoa = [headers];
-
-  if (rows.length) {
-    rows.forEach((row) => {
-      aoa.push(headers.map((header) => row[header] ?? ''));
-    });
-  } else {
-    aoa.push(headers.map((header, index) => (index === 0 ? 'Sem registros' : '')));
-  }
-
-  const sheet = XLSX.utils.aoa_to_sheet(aoa);
-
-  sheet['!cols'] = headers.map((header) => ({
-    wch: Math.max(String(header).length + 2, 18)
-  }));
-
-  return sheet;
-};
-
+// ------------------------------------------------------------
+// Abre o modal de exportação e popula o select de eventos
+// ------------------------------------------------------------
 App.openExportModal = function () {
-  const eventosOrdenados = [...App.state.eventos].sort((a, b) =>
-    String(a.data_realizacao).localeCompare(String(b.data_realizacao))
-  );
-
-  if (!eventosOrdenados.length) {
+  if (!App.state.eventos.length) {
     App.showToast('Não há eventos cadastrados para exportar.', 'warning');
     return;
   }
 
-  App.dom.exportEventoSelect.innerHTML = '<option value="">Selecione um evento</option>';
+  // Reutiliza o renderEventOptions que já popula o exportEventoSelect
+  App.renderEventOptions();
 
-  eventosOrdenados.forEach((evento) => {
-    const option = document.createElement('option');
-    option.value = evento.id;
-    option.textContent = `${evento.nome} - ${App.formatDate(evento.data_realizacao)}`;
-    App.dom.exportEventoSelect.appendChild(option);
-  });
+  // Garante que o select começa sem seleção
+  if (App.dom.exportEventoSelect) {
+    App.dom.exportEventoSelect.value = '';
+  }
 
   App.openModal(App.dom.exportModal);
 };
 
-App.exportExcel = function () {
-  App.openExportModal();
-};
+// Alias público (chamado pelo botão "Exportar Excel" no topbar)
+App.exportExcel = App.openExportModal;
 
+// ------------------------------------------------------------
+// Confirma e executa a exportação do evento selecionado
+// ------------------------------------------------------------
 App.confirmExportExcel = function () {
   const eventoId = App.dom.exportEventoSelect?.value || '';
 
@@ -54,18 +38,51 @@ App.confirmExportExcel = function () {
     return;
   }
 
-  const eventoSelecionado = App.getEventById(eventoId);
-
-  if (!eventoSelecionado) {
+  const evento = App.getEventById(eventoId);
+  if (!evento) {
     App.showToast('Evento não encontrado.', 'error');
     return;
   }
 
-  const pessoasHeaders = [
+  try {
+    const workbook = XLSX.utils.book_new();
+
+    // — Aba: Convidados —
+    const pessoasSheet = App._buildPessoasSheet(evento);
+    XLSX.utils.book_append_sheet(workbook, pessoasSheet, 'Convidados');
+
+    // — Aba: Equipe —
+    const equipeSheet = App._buildEquipeSheet(evento);
+    XLSX.utils.book_append_sheet(workbook, equipeSheet, 'Equipe');
+
+    // — Aba: Resumo do evento —
+    const resumoSheet = App._buildResumoSheet(evento);
+    XLSX.utils.book_append_sheet(workbook, resumoSheet, 'Resumo');
+
+    const nomeArquivo = App.sanitizeFileName(
+      `${evento.nome}_${App.formatDate(evento.data_realizacao)}`
+    );
+
+    XLSX.writeFile(workbook, `${nomeArquivo}_valet.xlsx`);
+
+    App.closeModal(App.dom.exportModal);
+    App.showToast(`Arquivo "${nomeArquivo}_valet.xlsx" exportado com sucesso.`, 'success');
+
+  } catch (err) {
+    console.error('[Export] Erro ao gerar Excel:', err);
+    App.showToast('Não foi possível gerar o arquivo. Tente novamente.', 'error');
+  }
+};
+
+// ------------------------------------------------------------
+// Constrói a aba de convidados
+// ------------------------------------------------------------
+App._buildPessoasSheet = function (evento) {
+  const headers = [
     'Evento',
     'Data do evento',
     'Local',
-    'Pessoa',
+    'Convidado',
     'Placa',
     'Telefone',
     'E-mail',
@@ -74,10 +91,38 @@ App.confirmExportExcel = function () {
     'Data callback',
     'Responsável callback',
     'Retorno do cliente',
-    'Observações callback'
+    'Observações callback',
   ];
 
-  const equipeHeaders = [
+  const rows = App.state.presencas
+    .filter((p) => p.evento_id === evento.id)
+    .map((presenca) => {
+      const pessoa = App.getPersonById(presenca.pessoa_id);
+      return {
+        'Evento':                 evento.nome,
+        'Data do evento':         App.formatDate(evento.data_realizacao),
+        'Local':                  evento.local || '',
+        'Convidado':              pessoa?.nome      || '(removido)',
+        'Placa':                  pessoa?.placa     || '',
+        'Telefone':               pessoa?.telefone  || '',
+        'E-mail':                 pessoa?.email     || '',
+        'Registrado em':          App.formatDateTime(presenca.registrado_em),
+        'Status callback':        'Pendente',
+        'Data callback':          '',
+        'Responsável callback':   '',
+        'Retorno do cliente':     '',
+        'Observações callback':   '',
+      };
+    });
+
+  return App._buildSheet(headers, rows);
+};
+
+// ------------------------------------------------------------
+// Constrói a aba de equipe/funcionários
+// ------------------------------------------------------------
+App._buildEquipeSheet = function (evento) {
+  const headers = [
     'Evento',
     'Data do evento',
     'Local',
@@ -85,105 +130,138 @@ App.confirmExportExcel = function () {
     'Cargo',
     'Telefone',
     'Observações',
-    'Registrado em'
+    'Registrado em',
   ];
 
-  const pessoasRows = App.state.presencas
-    .filter((presenca) => presenca.evento_id === eventoSelecionado.id)
-    .map((presenca) => {
-      const pessoa = App.getPersonById(presenca.pessoa_id);
-
-      return {
-        'Evento': eventoSelecionado.nome,
-        'Data do evento': App.formatDate(eventoSelecionado.data_realizacao),
-        'Local': eventoSelecionado.local || '',
-        'Pessoa': pessoa?.nome || '',
-        'Placa': pessoa?.placa || '',
-        'Telefone': pessoa?.telefone || '',
-        'E-mail': pessoa?.email || '',
-        'Registrado em': App.formatDateTime(presenca.registrado_em),
-        'Status callback': 'Pendente',
-        'Data callback': '',
-        'Responsável callback': '',
-        'Retorno do cliente': '',
-        'Observações callback': ''
-      };
-    });
-
-  const equipeRows = App.state.funcionariosEventos
-    .filter((vinculo) => vinculo.evento_id === eventoSelecionado.id)
+  const rows = App.state.funcionariosEventos
+    .filter((v) => v.evento_id === evento.id)
     .map((vinculo) => {
-      const funcionario = App.getEmployeeById(vinculo.funcionario_id);
-
+      const f = App.getEmployeeById(vinculo.funcionario_id);
       return {
-        'Evento': eventoSelecionado.nome,
-        'Data do evento': App.formatDate(eventoSelecionado.data_realizacao),
-        'Local': eventoSelecionado.local || '',
-        'Funcionário': funcionario?.nome || '',
-        'Cargo': funcionario?.cargo || '',
-        'Telefone': funcionario?.telefone || '',
-        'Observações': funcionario?.observacoes || '',
-        'Registrado em': App.formatDateTime(vinculo.registrado_em)
+        'Evento':          evento.nome,
+        'Data do evento':  App.formatDate(evento.data_realizacao),
+        'Local':           evento.local        || '',
+        'Funcionário':     f?.nome             || '(removido)',
+        'Cargo':           f?.cargo            || '',
+        'Telefone':        f?.telefone         || '',
+        'Observações':     f?.observacoes      || '',
+        'Registrado em':   App.formatDateTime(vinculo.registrado_em),
       };
     });
 
-  const workbook = XLSX.utils.book_new();
-
-  const pessoasSheet = App.buildSheetWithHeaders(pessoasHeaders, pessoasRows);
-  const equipeSheet = App.buildSheetWithHeaders(equipeHeaders, equipeRows);
-
-  XLSX.utils.book_append_sheet(workbook, pessoasSheet, 'Pessoas');
-  XLSX.utils.book_append_sheet(workbook, equipeSheet, 'Equipe_Funcionarios');
-
-  const nomeArquivo = App.sanitizeFileName(
-    `${eventoSelecionado.nome}_${App.formatDate(eventoSelecionado.data_realizacao)}`
-  );
-
-  XLSX.writeFile(workbook, `${nomeArquivo}_valet.xlsx`);
-
-  App.closeModal(App.dom.exportModal);
-  App.showToast('Arquivo exportado com sucesso.', 'success');
+  return App._buildSheet(headers, rows);
 };
 
+// ------------------------------------------------------------
+// Constrói uma aba de resumo geral do evento
+// ------------------------------------------------------------
+App._buildResumoSheet = function (evento) {
+  const totalConvidados  = App.getPeopleByEvent(evento.id).length;
+  const totalFuncionarios = App.getEmployeesByEvent(evento.id).length;
+
+  const aoa = [
+    ['Campo',            'Valor'],
+    ['Evento',           evento.nome],
+    ['Data',             App.formatDate(evento.data_realizacao)],
+    ['Local',            evento.local       || '—'],
+    ['Observações',      evento.observacoes || '—'],
+    ['Total convidados', totalConvidados],
+    ['Total equipe',     totalFuncionarios],
+    ['Exportado em',     App.formatDateTime(new Date().toISOString())],
+  ];
+
+  const sheet = XLSX.utils.aoa_to_sheet(aoa);
+
+  sheet['!cols'] = [{ wch: 22 }, { wch: 40 }];
+
+  return sheet;
+};
+
+// ------------------------------------------------------------
+// Utilitário: monta uma sheet a partir de headers + rows (objetos)
+// ------------------------------------------------------------
+App._buildSheet = function (headers, rows) {
+  const aoa = [headers];
+
+  if (rows.length) {
+    rows.forEach((row) => {
+      aoa.push(headers.map((h) => row[h] ?? ''));
+    });
+  } else {
+    // Linha indicativa de ausência de dados
+    aoa.push(
+      headers.map((_, i) => (i === 0 ? 'Sem registros para este evento' : ''))
+    );
+  }
+
+  const sheet = XLSX.utils.aoa_to_sheet(aoa);
+
+  // Largura automática baseada no maior header, mínimo 18 chars
+  sheet['!cols'] = headers.map((h) => ({
+    wch: Math.max(String(h).length + 4, 18),
+  }));
+
+  return sheet;
+};
+
+// ------------------------------------------------------------
+// Limpa toda a base de dados (com confirmação)
+// ------------------------------------------------------------
 App.clearAllData = async function () {
   if (!App.ensureSupabaseReady()) return;
 
-  const confirmou = await App.askConfirm({
-    title: 'Limpar base',
-    message: 'Tem certeza que deseja apagar todos os eventos, convidados, funcionários e histórico?',
-    confirmText: 'Limpar base',
-    cancelText: 'Cancelar',
-    tone: 'danger'
-  });
+  const confirmou = await App.confirm(
+    'Apagar TODOS os eventos, convidados, funcionários e histórico? Esta ação não pode ser desfeita.',
+    'Limpar base de dados'
+  );
 
   if (!confirmou) return;
 
+  // Ordem respeitando dependências: vínculos antes das entidades
   const tabelas = [
     'presencas',
     'funcionarios_eventos',
     'pessoas',
     'funcionarios',
-    'eventos'
+    'eventos',
   ];
 
   try {
-    for (const tabela of tabelas) {
-      const { error } = await App.db
-        .from(tabela)
-        .delete()
-        .not('id', 'is', null);
+    // Vínculos podem ser deletados em paralelo (sem dependência entre si)
+    const [presencasRes, funcionariosEventosRes] = await Promise.all([
+      App.db.from('presencas').delete().not('id', 'is', null),
+      App.db.from('funcionarios_eventos').delete().not('id', 'is', null),
+    ]);
 
-      if (error) {
-        console.error(`Erro ao limpar ${tabela}:`, error);
-        App.showToast(`Erro ao limpar a tabela ${tabela}.`, 'error');
-        return;
-      }
+    if (presencasRes.error) {
+      throw new Error(`Erro ao limpar presenças: ${presencasRes.error.message}`);
+    }
+    if (funcionariosEventosRes.error) {
+      throw new Error(`Erro ao limpar vínculos: ${funcionariosEventosRes.error.message}`);
+    }
+
+    // Entidades podem ser deletadas em paralelo após os vínculos
+    const [pessoasRes, funcionariosRes, eventosRes] = await Promise.all([
+      App.db.from('pessoas').delete().not('id', 'is', null),
+      App.db.from('funcionarios').delete().not('id', 'is', null),
+      App.db.from('eventos').delete().not('id', 'is', null),
+    ]);
+
+    const erros = [
+      pessoasRes.error     && `pessoas: ${pessoasRes.error.message}`,
+      funcionariosRes.error && `funcionários: ${funcionariosRes.error.message}`,
+      eventosRes.error     && `eventos: ${eventosRes.error.message}`,
+    ].filter(Boolean);
+
+    if (erros.length) {
+      throw new Error(`Erro ao limpar tabelas — ${erros.join(' | ')}`);
     }
 
     await App.refreshAfterChange('dashboard');
     App.showToast('Base limpa com sucesso.', 'success');
-  } catch (error) {
-    console.error('Erro inesperado ao limpar a base:', error);
-    App.showToast('Não foi possível limpar a base.', 'error');
+
+  } catch (err) {
+    console.error('[Export] Erro ao limpar base:', err);
+    App.showToast(err.message || 'Não foi possível limpar a base.', 'error');
   }
 };
