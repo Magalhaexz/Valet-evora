@@ -3,9 +3,8 @@ window.App = window.App || {};
 App.config = {
   APP_NAME: 'ÉVORA',
   AUTO_REFRESH_MS: 8000,
-
-  SUPABASE_URL: 'https://yccvpwjxfstjbvuvrgch.supabase.co',
-  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljY3Zwd2p4ZnN0amJ2dXZyZ2NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NTI1NzIsImV4cCI6MjA5MjAyODU3Mn0.QwN4nQarFcPWCiKcMioNN5grraQmxKpm9frakXY2q3U',
+  SUPABASE_URL: 'COLE_SUA_SUPABASE_URL_AQUI',
+  SUPABASE_ANON_KEY: 'COLE_SUA_SUPABASE_ANON_KEY_AQUI'
 };
 
 App.db = null;
@@ -46,7 +45,11 @@ App.ensureSupabaseReady = function (showMessage = true) {
   const ready = !!App.db;
 
   if (!ready && showMessage) {
-    alert('Configure a SUPABASE_URL e a SUPABASE_ANON_KEY no arquivo js/config.js.');
+    App.showToast(
+      'Configure a SUPABASE_URL e a SUPABASE_ANON_KEY no arquivo js/config.js.',
+      'error',
+      4500
+    );
   }
 
   return ready;

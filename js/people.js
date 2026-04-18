@@ -1,5 +1,24 @@
 window.App = window.App || {};
 
+App.findDuplicatePeople = function ({ placa = '', telefone = '', ignoreId = '' }) {
+  const placaNormalizada = App.normalizePlate(placa);
+  const telefoneNormalizado = String(telefone).trim();
+
+  const duplicatePlate = App.state.pessoas.find(
+    (pessoa) =>
+      pessoa.id !== ignoreId &&
+      App.normalizePlate(pessoa.placa) === placaNormalizada
+  ) || null;
+
+  const duplicatePhone = App.state.pessoas.find(
+    (pessoa) =>
+      pessoa.id !== ignoreId &&
+      String(pessoa.telefone || '').trim() === telefoneNormalizado
+  ) || null;
+
+  return { duplicatePlate, duplicatePhone };
+};
+
 App.handleSavePerson = async function (event) {
   event.preventDefault();
 
@@ -22,22 +41,38 @@ App.handleSavePerson = async function (event) {
     return;
   }
 
-  let pessoa = App.state.pessoas.find(
-    (item) =>
-      App.normalizePlate(item.placa) === placa ||
-      String(item.telefone || '').trim() === telefone
-  );
+  const { duplicatePlate, duplicatePhone } = App.findDuplicatePeople({ placa, telefone });
+
+  if (duplicatePlate && duplicatePhone && duplicatePlate.id !== duplicatePhone.id) {
+    App.showToast(
+      'Conflito encontrado: a placa e o telefone já pertencem a cadastros diferentes.',
+      'error',
+      4800
+    );
+    return;
+  }
+
+  let pessoa = duplicatePlate || duplicatePhone || null;
 
   try {
     if (pessoa) {
+      if (duplicatePlate) {
+        App.showToast(
+          'Esta placa já foi cadastrada. O cadastro existente será reutilizado.',
+          'warning',
+          4200
+        );
+      } else if (duplicatePhone) {
+        App.showToast(
+          'Este telefone já foi cadastrado. O cadastro existente será reutilizado.',
+          'warning',
+          4200
+        );
+      }
+
       const { error: updateError } = await App.db
         .from('pessoas')
-        .update({
-          nome,
-          placa,
-          telefone,
-          email
-        })
+        .update({ nome, placa, telefone, email })
         .eq('id', pessoa.id);
 
       if (updateError) {
@@ -67,12 +102,11 @@ App.handleSavePerson = async function (event) {
     const pessoaId = pessoa.id;
 
     const jaRegistrada = App.state.presencas.some(
-      (presenca) =>
-        presenca.evento_id === eventoId &&
-        presenca.pessoa_id === pessoaId
+      (presenca) => presenca.evento_id === eventoId && presenca.pessoa_id === pessoaId
     );
 
     if (jaRegistrada) {
+      await App.refreshAfterChange('pessoas');
       App.showToast('Essa pessoa já está registrada nesse evento.', 'warning');
       return;
     }
@@ -84,9 +118,7 @@ App.handleSavePerson = async function (event) {
       registrado_em: new Date().toISOString()
     };
 
-    const { error: presencaError } = await App.db
-      .from('presencas')
-      .insert([novaPresenca]);
+    const { error: presencaError } = await App.db.from('presencas').insert([novaPresenca]);
 
     if (presencaError) {
       console.error('Erro ao vincular pessoa ao evento:', presencaError);
@@ -104,6 +136,84 @@ App.handleSavePerson = async function (event) {
   }
 };
 
+App.openEditPersonModal = function (id) {
+  const pessoa = App.getPersonById(id);
+  if (!pessoa) {
+    App.showToast('Pessoa não encontrada.', 'error');
+    return;
+  }
+
+  App.dom.editPessoaId.value = pessoa.id || '';
+  App.dom.editPessoaNome.value = pessoa.nome || '';
+  App.dom.editPessoaPlaca.value = pessoa.placa || '';
+  App.dom.editPessoaTelefone.value = pessoa.telefone || '';
+  App.dom.editPessoaEmail.value = pessoa.email || '';
+
+  App.openModal(App.dom.editPessoaModal);
+};
+
+App.handleUpdatePerson = async function (event) {
+  event.preventDefault();
+
+  if (!App.ensureSupabaseReady()) return;
+
+  const id = App.dom.editPessoaId?.value || '';
+  const nome = App.dom.editPessoaNome?.value.trim() || '';
+  const placa = App.normalizePlate(App.dom.editPessoaPlaca?.value || '');
+  const telefone = App.dom.editPessoaTelefone?.value.trim() || '';
+  const email = App.dom.editPessoaEmail?.value.trim() || '';
+
+  if (!id || !nome || !placa || !telefone) {
+    App.showToast('Preencha nome, placa e telefone.', 'warning');
+    return;
+  }
+
+  const { duplicatePlate, duplicatePhone } = App.findDuplicatePeople({
+    placa,
+    telefone,
+    ignoreId: id
+  });
+
+  if (duplicatePlate && duplicatePhone && duplicatePlate.id !== duplicatePhone.id) {
+    App.showToast(
+      'Conflito encontrado: a placa e o telefone já pertencem a cadastros diferentes.',
+      'error',
+      4800
+    );
+    return;
+  }
+
+  if (duplicatePlate) {
+    App.showToast('Esta placa já foi cadastrada em outro cadastro.', 'warning');
+    return;
+  }
+
+  if (duplicatePhone) {
+    App.showToast('Este telefone já foi cadastrado em outro cadastro.', 'warning');
+    return;
+  }
+
+  try {
+    const { error } = await App.db
+      .from('pessoas')
+      .update({ nome, placa, telefone, email })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Erro ao atualizar pessoa:', error);
+      App.showToast('Erro ao atualizar convidado.', 'error');
+      return;
+    }
+
+    App.closeModal(App.dom.editPessoaModal);
+    await App.refreshAfterChange('pessoas');
+    App.showToast('Cadastro atualizado com sucesso.', 'success');
+  } catch (error) {
+    console.error('Erro inesperado ao editar pessoa:', error);
+    App.showToast('Não foi possível editar a pessoa.', 'error');
+  }
+};
+
 App.renderPeopleList = function () {
   const query = App.dom.buscaPessoas?.value.trim().toLowerCase() || '';
 
@@ -113,9 +223,7 @@ App.renderPeopleList = function () {
       pessoa.placa,
       pessoa.telefone,
       pessoa.email || ''
-    ]
-      .join(' ')
-      .toLowerCase();
+    ].join(' ').toLowerCase();
 
     return textoBusca.includes(query);
   });
@@ -125,44 +233,53 @@ App.renderPeopleList = function () {
     return;
   }
 
-  App.dom.listaPessoas.innerHTML = pessoasFiltradas
-    .map((pessoa) => {
-      const totalParticipacoes = App.state.presencas.filter(
-        (presenca) => presenca.pessoa_id === pessoa.id
-      ).length;
+  App.dom.listaPessoas.innerHTML = pessoasFiltradas.map((pessoa) => {
+    const totalParticipacoes = App.state.presencas.filter(
+      (presenca) => presenca.pessoa_id === pessoa.id
+    ).length;
 
-      return `
-        <div class="list-item">
-          <div>
-            <h4>${App.escapeHtml(pessoa.nome)}</h4>
-            <p>
-              <strong>Placa:</strong> ${App.escapeHtml(pessoa.placa || '—')} •
-              <strong>Telefone:</strong> ${App.escapeHtml(pessoa.telefone || '—')}
-            </p>
-            <p>
-              ${
-                pessoa.email
-                  ? `<strong>E-mail:</strong> ${App.escapeHtml(pessoa.email)}`
-                  : 'Sem e-mail cadastrado.'
-              }
-            </p>
-            <div class="chips">
-              <span class="chip">${totalParticipacoes} evento(s)</span>
-            </div>
+    return `
+      <div class="list-item">
+        <div>
+          <h4>${App.escapeHtml(pessoa.nome)}</h4>
+          <p>
+            <strong>Placa:</strong> ${App.escapeHtml(pessoa.placa || '—')} •
+            <strong>Telefone:</strong> ${App.escapeHtml(pessoa.telefone || '—')}
+          </p>
+          <p>
+            ${
+              pessoa.email
+                ? `<strong>E-mail:</strong> ${App.escapeHtml(pessoa.email)}`
+                : 'Sem e-mail cadastrado.'
+            }
+          </p>
+          <div class="chips">
+            <span class="chip">${totalParticipacoes} evento(s)</span>
           </div>
 
-          <button
-            class="btn-danger"
-            type="button"
-            data-action="delete-person"
-            data-id="${pessoa.id}"
-          >
-            Excluir
-          </button>
+          <div class="item-actions">
+            <button
+              class="btn-secondary"
+              type="button"
+              data-action="edit-person"
+              data-id="${pessoa.id}"
+            >
+              Editar
+            </button>
+
+            <button
+              class="btn-danger"
+              type="button"
+              data-action="delete-person"
+              data-id="${pessoa.id}"
+            >
+              Excluir
+            </button>
+          </div>
         </div>
-      `;
-    })
-    .join('');
+      </div>
+    `;
+  }).join('');
 };
 
 App.deletePerson = async function (id) {
@@ -171,9 +288,13 @@ App.deletePerson = async function (id) {
   const pessoa = App.getPersonById(id);
   if (!pessoa) return;
 
-  const confirmou = confirm(
-    `Excluir "${pessoa.nome}" da base? As participações dela também serão removidas.`
-  );
+  const confirmou = await App.askConfirm({
+    title: 'Excluir convidado',
+    message: `Excluir "${pessoa.nome}" da base? As participações dela também serão removidas.`,
+    confirmText: 'Excluir convidado',
+    cancelText: 'Cancelar',
+    tone: 'danger'
+  });
 
   if (!confirmou) return;
 

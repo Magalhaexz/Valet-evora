@@ -32,10 +32,7 @@ App.handleSaveEmployee = async function (event) {
     if (funcionario) {
       const { error: updateError } = await App.db
         .from('funcionarios')
-        .update({
-          telefone,
-          observacoes
-        })
+        .update({ telefone, observacoes })
         .eq('id', funcionario.id);
 
       if (updateError) {
@@ -53,9 +50,7 @@ App.handleSaveEmployee = async function (event) {
         criado_em: new Date().toISOString()
       };
 
-      const { error: insertError } = await App.db
-        .from('funcionarios')
-        .insert([funcionario]);
+      const { error: insertError } = await App.db.from('funcionarios').insert([funcionario]);
 
       if (insertError) {
         console.error('Erro ao salvar funcionário:', insertError);
@@ -113,9 +108,7 @@ App.renderEmployeeList = function () {
       funcionario.cargo,
       funcionario.telefone || '',
       funcionario.observacoes || ''
-    ]
-      .join(' ')
-      .toLowerCase();
+    ].join(' ').toLowerCase();
 
     return textoBusca.includes(query);
   });
@@ -125,48 +118,46 @@ App.renderEmployeeList = function () {
     return;
   }
 
-  App.dom.listaFuncionarios.innerHTML = funcionariosFiltrados
-    .map((funcionario) => {
-      const totalParticipacoes = App.state.funcionariosEventos.filter(
-        (vinculo) => vinculo.funcionario_id === funcionario.id
-      ).length;
+  App.dom.listaFuncionarios.innerHTML = funcionariosFiltrados.map((funcionario) => {
+    const totalParticipacoes = App.state.funcionariosEventos.filter(
+      (vinculo) => vinculo.funcionario_id === funcionario.id
+    ).length;
 
-      return `
-        <div class="list-item">
-          <div>
-            <h4>${App.escapeHtml(funcionario.nome)}</h4>
-            <p>
-              <strong>Cargo:</strong> ${App.escapeHtml(funcionario.cargo || '—')}
-              ${
-                funcionario.telefone
-                  ? ` • <strong>Telefone:</strong> ${App.escapeHtml(funcionario.telefone)}`
-                  : ''
-              }
-            </p>
-            <p>
-              ${
-                funcionario.observacoes
-                  ? App.escapeHtml(funcionario.observacoes)
-                  : 'Sem observações cadastradas.'
-              }
-            </p>
-            <div class="chips">
-              <span class="chip">${totalParticipacoes} evento(s)</span>
-            </div>
+    return `
+      <div class="list-item">
+        <div>
+          <h4>${App.escapeHtml(funcionario.nome)}</h4>
+          <p>
+            <strong>Cargo:</strong> ${App.escapeHtml(funcionario.cargo || '—')}
+            ${
+              funcionario.telefone
+                ? ` • <strong>Telefone:</strong> ${App.escapeHtml(funcionario.telefone)}`
+                : ''
+            }
+          </p>
+          <p>
+            ${
+              funcionario.observacoes
+                ? App.escapeHtml(funcionario.observacoes)
+                : 'Sem observações cadastradas.'
+            }
+          </p>
+          <div class="chips">
+            <span class="chip">${totalParticipacoes} evento(s)</span>
           </div>
-
-          <button
-            class="btn-danger"
-            type="button"
-            data-action="delete-employee"
-            data-id="${funcionario.id}"
-          >
-            Excluir
-          </button>
         </div>
-      `;
-    })
-    .join('');
+
+        <button
+          class="btn-danger"
+          type="button"
+          data-action="delete-employee"
+          data-id="${funcionario.id}"
+        >
+          Excluir
+        </button>
+      </div>
+    `;
+  }).join('');
 };
 
 App.deleteEmployee = async function (id) {
@@ -175,9 +166,13 @@ App.deleteEmployee = async function (id) {
   const funcionario = App.getEmployeeById(id);
   if (!funcionario) return;
 
-  const confirmou = confirm(
-    `Excluir "${funcionario.nome}" da base? As participações dele também serão removidas.`
-  );
+  const confirmou = await App.askConfirm({
+    title: 'Excluir funcionário',
+    message: `Excluir "${funcionario.nome}" da base? As participações dele também serão removidas.`,
+    confirmText: 'Excluir funcionário',
+    cancelText: 'Cancelar',
+    tone: 'danger'
+  });
 
   if (!confirmou) return;
 

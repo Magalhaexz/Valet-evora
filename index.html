@@ -444,7 +444,185 @@
       </div>
     </main>
   </div>
+    <div
+    id="exportModal"
+    class="modal-overlay hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="exportModalTitle"
+  >
+    <div class="modal-panel">
+      <div class="modal-header">
+        <h3 id="exportModalTitle" class="modal-title">Exportar evento</h3>
+      </div>
 
+      <div class="modal-body">
+        <p class="modal-text">Escolha o evento que deseja exportar.</p>
+
+        <div class="field">
+          <label for="exportEventoSelect">Evento</label>
+          <select id="exportEventoSelect">
+            <option value="">Selecione um evento</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" type="button" id="btnCloseExportModal">Cancelar</button>
+        <button class="btn" type="button" id="btnConfirmExport">Exportar</button>
+      </div>
+    </div>
+  </div>
+
+  <div
+    id="editPessoaModal"
+    class="modal-overlay hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="editPessoaModalTitle"
+  >
+    <div class="modal-panel">
+      <div class="modal-header">
+        <h3 id="editPessoaModalTitle" class="modal-title">Editar convidado</h3>
+      </div>
+
+      <form id="editPessoaForm">
+        <input type="hidden" id="editPessoaId" />
+
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="field full">
+              <label for="editPessoaNome">Nome</label>
+              <input id="editPessoaNome" type="text" required />
+            </div>
+
+            <div class="field">
+              <label for="editPessoaPlaca">Placa</label>
+              <input id="editPessoaPlaca" type="text" required />
+            </div>
+
+            <div class="field">
+              <label for="editPessoaTelefone">Telefone</label>
+              <input id="editPessoaTelefone" type="text" required />
+            </div>
+
+            <div class="field full">
+              <label for="editPessoaEmail">E-mail</label>
+              <input id="editPessoaEmail" type="email" />
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-secondary" type="button" id="btnCancelEditPessoa">Cancelar</button>
+          <button class="btn" type="submit">Salvar alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+    <div
+    id="exportModal"
+    class="modal-overlay hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="exportModalTitle"
+  >
+    <div class="modal-panel">
+      <div class="modal-header">
+        <h3 id="exportModalTitle" class="modal-title">Exportar evento</h3>
+      </div>
+
+      <div class="modal-body">
+        <p class="modal-text">Escolha o evento que deseja exportar.</p>
+
+        <div class="field">
+          <label for="exportEventoSelect">Evento</label>
+          <select id="exportEventoSelect">
+            <option value="">Selecione um evento</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" type="button" id="btnCloseExportModal">Cancelar</button>
+        <button class="btn" type="button" id="btnConfirmExport">Exportar</button>
+      </div>
+    </div>
+  </div>
+
+  <div
+    id="editPessoaModal"
+    class="modal-overlay hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="editPessoaModalTitle"
+  >
+    <div class="modal-panel">
+      <div class="modal-header">
+        <h3 id="editPessoaModalTitle" class="modal-title">Editar convidado</h3>
+      </div>
+
+      <form id="editPessoaForm">
+        <input type="hidden" id="editPessoaId" />
+
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="field full">
+              <label for="editPessoaNome">Nome</label>
+              <input id="editPessoaNome" type="text" required />
+            </div>
+
+            <div class="field">
+              <label for="editPessoaPlaca">Placa</label>
+              <input id="editPessoaPlaca" type="text" required />
+            </div>
+
+            <div class="field">
+              <label for="editPessoaTelefone">Telefone</label>
+              <input id="editPessoaTelefone" type="text" required />
+            </div>
+
+            <div class="field full">
+              <label for="editPessoaEmail">E-mail</label>
+              <input id="editPessoaEmail" type="email" />
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-secondary" type="button" id="btnCancelEditPessoa">Cancelar</button>
+          <button class="btn" type="submit">Salvar alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div
+    id="confirmModal"
+    class="modal-overlay hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="confirmModalTitle"
+  >
+    <div class="modal-panel modal-panel-sm">
+      <div class="modal-header">
+        <h3 id="confirmModalTitle" class="modal-title">Confirmar ação</h3>
+      </div>
+
+      <div class="modal-body">
+        <p id="confirmModalMessage" class="modal-text">
+          Tem certeza que deseja continuar?
+        </p>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" type="button" id="btnCancelConfirmModal">Cancelar</button>
+        <button class="btn-danger" type="button" id="btnAcceptConfirmModal">Confirmar</button>
+      </div>
+    </div>
+  </div>
+  
   <div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

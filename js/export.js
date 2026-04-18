@@ -20,7 +20,7 @@ App.buildSheetWithHeaders = function (headers, rows) {
   return sheet;
 };
 
-App.exportExcel = function () {
+App.openExportModal = function () {
   const eventosOrdenados = [...App.state.eventos].sort((a, b) =>
     String(a.data_realizacao).localeCompare(String(b.data_realizacao))
   );
@@ -30,28 +30,36 @@ App.exportExcel = function () {
     return;
   }
 
-  const listaEventos = eventosOrdenados
-    .map((evento, index) => `${index + 1}. ${evento.nome} - ${App.formatDate(evento.data_realizacao)}`)
-    .join('\n');
+  App.dom.exportEventoSelect.innerHTML = '<option value="">Selecione um evento</option>';
 
-  const escolha = prompt(
-    `Escolha o evento que deseja exportar digitando o número:\n\n${listaEventos}`
-  );
+  eventosOrdenados.forEach((evento) => {
+    const option = document.createElement('option');
+    option.value = evento.id;
+    option.textContent = `${evento.nome} - ${App.formatDate(evento.data_realizacao)}`;
+    App.dom.exportEventoSelect.appendChild(option);
+  });
 
-  if (escolha === null) return;
+  App.openModal(App.dom.exportModal);
+};
 
-  const numeroEscolhido = Number(String(escolha).trim());
+App.exportExcel = function () {
+  App.openExportModal();
+};
 
-  if (
-    !Number.isInteger(numeroEscolhido) ||
-    numeroEscolhido < 1 ||
-    numeroEscolhido > eventosOrdenados.length
-  ) {
-    App.showToast('Seleção inválida. Digite um número válido da lista.', 'warning');
+App.confirmExportExcel = function () {
+  const eventoId = App.dom.exportEventoSelect?.value || '';
+
+  if (!eventoId) {
+    App.showToast('Selecione um evento para exportar.', 'warning');
     return;
   }
 
-  const eventoSelecionado = eventosOrdenados[numeroEscolhido - 1];
+  const eventoSelecionado = App.getEventById(eventoId);
+
+  if (!eventoSelecionado) {
+    App.showToast('Evento não encontrado.', 'error');
+    return;
+  }
 
   const pessoasHeaders = [
     'Evento',
@@ -132,14 +140,21 @@ App.exportExcel = function () {
   );
 
   XLSX.writeFile(workbook, `${nomeArquivo}_valet.xlsx`);
+
+  App.closeModal(App.dom.exportModal);
+  App.showToast('Arquivo exportado com sucesso.', 'success');
 };
 
 App.clearAllData = async function () {
   if (!App.ensureSupabaseReady()) return;
 
-  const confirmou = confirm(
-    'Tem certeza que deseja apagar todos os eventos, convidados, funcionários e histórico?'
-  );
+  const confirmou = await App.askConfirm({
+    title: 'Limpar base',
+    message: 'Tem certeza que deseja apagar todos os eventos, convidados, funcionários e histórico?',
+    confirmText: 'Limpar base',
+    cancelText: 'Cancelar',
+    tone: 'danger'
+  });
 
   if (!confirmou) return;
 

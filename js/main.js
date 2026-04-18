@@ -23,12 +23,20 @@ App.bindEvents = function () {
   App.dom.formEvento?.addEventListener('submit', App.handleSaveEvent);
   App.dom.formPessoa?.addEventListener('submit', App.handleSavePerson);
   App.dom.formFuncionario?.addEventListener('submit', App.handleSaveEmployee);
+  App.dom.editPessoaForm?.addEventListener('submit', App.handleUpdatePerson);
 
   App.dom.btnLimparEvento?.addEventListener('click', () => App.dom.formEvento?.reset());
   App.dom.btnLimparPessoa?.addEventListener('click', () => App.dom.formPessoa?.reset());
   App.dom.btnLimparFuncionario?.addEventListener('click', () => App.dom.formFuncionario?.reset());
 
   App.dom.btnExportar?.addEventListener('click', App.exportExcel);
+  App.dom.btnConfirmExport?.addEventListener('click', App.confirmExportExcel);
+  App.dom.btnCloseExportModal?.addEventListener('click', () => App.closeModal(App.dom.exportModal));
+  App.dom.btnCancelEditPessoa?.addEventListener('click', () => App.closeModal(App.dom.editPessoaModal));
+
+  App.dom.btnCancelConfirmModal?.addEventListener('click', () => App.resolveConfirmModal(false));
+  App.dom.btnAcceptConfirmModal?.addEventListener('click', () => App.resolveConfirmModal(true));
+
   App.dom.btnLimparTudo?.addEventListener('click', App.clearAllData);
 
   App.dom.buscaEventos?.addEventListener('input', App.renderEventList);
@@ -46,6 +54,29 @@ App.bindEvents = function () {
     if (action === 'delete-event') await App.deleteEvent(id);
     if (action === 'delete-person') await App.deletePerson(id);
     if (action === 'delete-employee') await App.deleteEmployee(id);
+    if (action === 'edit-person') App.openEditPersonModal(id);
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!event.target.classList.contains('modal-overlay')) return;
+
+    if (event.target === App.dom.confirmModal) {
+      App.resolveConfirmModal(false);
+      return;
+    }
+
+    App.closeModal(event.target);
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+
+    if (App.dom.confirmModal && !App.dom.confirmModal.classList.contains('hidden')) {
+      App.resolveConfirmModal(false);
+      return;
+    }
+
+    App.closeAllModals();
   });
 
   window.addEventListener('focus', async () => {
@@ -64,6 +95,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   await App.bootstrapAuth();
 
   if (!App.isSupabaseConfigured()) {
-    App.showToast('Projeto pronto. Agora configure o Supabase em js/config.js.', 'warning', 4800);
+    App.showToast(
+      'Projeto pronto. Agora configure o Supabase em js/config.js.',
+      'warning',
+      4800
+    );
   }
 });

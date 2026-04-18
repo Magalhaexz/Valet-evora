@@ -4,6 +4,7 @@ App.state = {
   currentUser: null,
   refreshTimer: null,
   isLoading: false,
+  pendingConfirmResolve: null,
 
   eventos: [],
   pessoas: [],

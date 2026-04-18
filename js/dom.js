@@ -69,7 +69,27 @@ App.cacheDom = function () {
       pessoas: document.getElementById('view-pessoas'),
       funcionarios: document.getElementById('view-funcionarios'),
       historico: document.getElementById('view-historico')
-    }
+    },
+
+    exportModal: document.getElementById('exportModal'),
+    exportEventoSelect: document.getElementById('exportEventoSelect'),
+    btnCloseExportModal: document.getElementById('btnCloseExportModal'),
+    btnConfirmExport: document.getElementById('btnConfirmExport'),
+
+    editPessoaModal: document.getElementById('editPessoaModal'),
+    editPessoaForm: document.getElementById('editPessoaForm'),
+    editPessoaId: document.getElementById('editPessoaId'),
+    editPessoaNome: document.getElementById('editPessoaNome'),
+    editPessoaPlaca: document.getElementById('editPessoaPlaca'),
+    editPessoaTelefone: document.getElementById('editPessoaTelefone'),
+    editPessoaEmail: document.getElementById('editPessoaEmail'),
+    btnCancelEditPessoa: document.getElementById('btnCancelEditPessoa'),
+
+    confirmModal: document.getElementById('confirmModal'),
+    confirmTitle: document.getElementById('confirmModalTitle'),
+    confirmMessage: document.getElementById('confirmModalMessage'),
+    btnCancelConfirmModal: document.getElementById('btnCancelConfirmModal'),
+    btnAcceptConfirmModal: document.getElementById('btnAcceptConfirmModal')
   };
 };
 
@@ -118,4 +138,26 @@ App.updateCurrentUserBadge = function (email = '') {
 App.renderEmptyState = function (element, message) {
   if (!element) return;
   element.innerHTML = `<div class="empty">${App.escapeHtml(message)}</div>`;
+};
+
+App.openModal = function (modal) {
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  document.body.classList.add('modal-open');
+};
+
+App.closeModal = function (modal) {
+  if (!modal) return;
+  modal.classList.add('hidden');
+
+  const opened = document.querySelector('.modal-overlay:not(.hidden)');
+  if (!opened) {
+    document.body.classList.remove('modal-open');
+  }
+};
+
+App.closeAllModals = function () {
+  App.closeModal(App.dom.exportModal);
+  App.closeModal(App.dom.editPessoaModal);
+  App.closeModal(App.dom.confirmModal);
 };

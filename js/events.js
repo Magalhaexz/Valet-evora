@@ -34,7 +34,6 @@ App.handleSaveEvent = async function (event) {
     }
 
     App.dom.formEvento?.reset();
-
     await App.refreshAfterChange('eventos');
     App.showToast('Evento cadastrado com sucesso.', 'success');
   } catch (error) {
@@ -97,9 +96,7 @@ App.renderEventList = function () {
         evento.local,
         evento.observacoes,
         App.formatDate(evento.data_realizacao)
-      ]
-        .join(' ')
-        .toLowerCase();
+      ].join(' ').toLowerCase();
 
       return textoBusca.includes(query);
     });
@@ -109,42 +106,40 @@ App.renderEventList = function () {
     return;
   }
 
-  App.dom.listaEventos.innerHTML = eventos
-    .map((evento) => {
-      const convidados = App.getPeopleByEvent(evento.id).length;
-      const equipe = App.getEmployeesByEvent(evento.id).length;
+  App.dom.listaEventos.innerHTML = eventos.map((evento) => {
+    const convidados = App.getPeopleByEvent(evento.id).length;
+    const equipe = App.getEmployeesByEvent(evento.id).length;
 
-      return `
-        <div class="list-item">
-          <div>
-            <h4>${App.escapeHtml(evento.nome)}</h4>
-            <p>
-              <strong>Data:</strong> ${App.formatDate(evento.data_realizacao)}
-              ${evento.local ? ` • <strong>Local:</strong> ${App.escapeHtml(evento.local)}` : ''}
-            </p>
-            ${
-              evento.observacoes
-                ? `<p style="margin-top:6px;">${App.escapeHtml(evento.observacoes)}</p>`
-                : ''
-            }
-            <div class="chips">
-              <span class="chip">${convidados} convidado(s)</span>
-              <span class="chip">${equipe} funcionário(s)</span>
-            </div>
+    return `
+      <div class="list-item">
+        <div>
+          <h4>${App.escapeHtml(evento.nome)}</h4>
+          <p>
+            <strong>Data:</strong> ${App.formatDate(evento.data_realizacao)}
+            ${evento.local ? ` • <strong>Local:</strong> ${App.escapeHtml(evento.local)}` : ''}
+          </p>
+          ${
+            evento.observacoes
+              ? `<p style="margin-top:6px;">${App.escapeHtml(evento.observacoes)}</p>`
+              : ''
+          }
+          <div class="chips">
+            <span class="chip">${convidados} convidado(s)</span>
+            <span class="chip">${equipe} funcionário(s)</span>
           </div>
-
-          <button
-            class="btn-danger"
-            type="button"
-            data-action="delete-event"
-            data-id="${evento.id}"
-          >
-            Excluir
-          </button>
         </div>
-      `;
-    })
-    .join('');
+
+        <button
+          class="btn-danger"
+          type="button"
+          data-action="delete-event"
+          data-id="${evento.id}"
+        >
+          Excluir
+        </button>
+      </div>
+    `;
+  }).join('');
 };
 
 App.deleteEvent = async function (id) {
@@ -153,9 +148,13 @@ App.deleteEvent = async function (id) {
   const evento = App.getEventById(id);
   if (!evento) return;
 
-  const confirmou = confirm(
-    `Excluir o evento "${evento.nome}"? Os convidados e funcionários vinculados a ele também serão removidos do histórico.`
-  );
+  const confirmou = await App.askConfirm({
+    title: 'Excluir evento',
+    message: `Excluir o evento "${evento.nome}"? Os convidados e funcionários vinculados também sairão do histórico.`,
+    confirmText: 'Excluir evento',
+    cancelText: 'Cancelar',
+    tone: 'danger'
+  });
 
   if (!confirmou) return;
 
@@ -205,12 +204,8 @@ App.renderStats = function () {
   const hoje = App.getTodayISO();
 
   const totalEventos = App.state.eventos.length;
-  const eventosHoje = App.state.eventos.filter(
-    (evento) => evento.data_realizacao === hoje
-  ).length;
-  const proximosEventos = App.state.eventos.filter(
-    (evento) => evento.data_realizacao > hoje
-  ).length;
+  const eventosHoje = App.state.eventos.filter((evento) => evento.data_realizacao === hoje).length;
+  const proximosEventos = App.state.eventos.filter((evento) => evento.data_realizacao > hoje).length;
   const totalFuncionarios = App.state.funcionarios.length;
 
   if (App.dom.statEventos) App.dom.statEventos.textContent = String(totalEventos);
@@ -234,63 +229,51 @@ App.renderAgenda = function () {
   if (!eventosHoje.length) {
     App.renderEmptyState(App.dom.listaAgendaHoje, 'Nenhum evento cadastrado para hoje.');
   } else if (App.dom.listaAgendaHoje) {
-    App.dom.listaAgendaHoje.innerHTML = eventosHoje
-      .map((evento) => {
-        const convidados = App.getPeopleByEvent(evento.id).length;
-        const equipe = App.getEmployeesByEvent(evento.id).length;
+    App.dom.listaAgendaHoje.innerHTML = eventosHoje.map((evento) => {
+      const convidados = App.getPeopleByEvent(evento.id).length;
+      const equipe = App.getEmployeesByEvent(evento.id).length;
 
-        return `
-          <div class="agenda-item">
-            <div>
-              <h4>${App.escapeHtml(evento.nome)}</h4>
-              <p>
-                ${
-                  evento.local
-                    ? `<strong>Local:</strong> ${App.escapeHtml(evento.local)} • `
-                    : ''
-                }
-                <strong>Convidados:</strong> ${convidados} •
-                <strong>Equipe:</strong> ${equipe}
-              </p>
-              ${
-                evento.observacoes
-                  ? `<p style="margin-top:8px;">${App.escapeHtml(evento.observacoes)}</p>`
-                  : ''
-              }
-            </div>
-            <span class="agenda-date">Hoje</span>
+      return `
+        <div class="agenda-item">
+          <div>
+            <h4>${App.escapeHtml(evento.nome)}</h4>
+            <p>
+              ${evento.local ? `<strong>Local:</strong> ${App.escapeHtml(evento.local)} • ` : ''}
+              <strong>Convidados:</strong> ${convidados} •
+              <strong>Equipe:</strong> ${equipe}
+            </p>
+            ${
+              evento.observacoes
+                ? `<p style="margin-top:8px;">${App.escapeHtml(evento.observacoes)}</p>`
+                : ''
+            }
           </div>
-        `;
-      })
-      .join('');
+          <span class="agenda-date">Hoje</span>
+        </div>
+      `;
+    }).join('');
   }
 
   if (!proximosEventos.length) {
     App.renderEmptyState(App.dom.listaProximosEventos, 'Nenhum próximo evento cadastrado.');
   } else if (App.dom.listaProximosEventos) {
-    App.dom.listaProximosEventos.innerHTML = proximosEventos
-      .map((evento) => {
-        const convidados = App.getPeopleByEvent(evento.id).length;
-        const equipe = App.getEmployeesByEvent(evento.id).length;
+    App.dom.listaProximosEventos.innerHTML = proximosEventos.map((evento) => {
+      const convidados = App.getPeopleByEvent(evento.id).length;
+      const equipe = App.getEmployeesByEvent(evento.id).length;
 
-        return `
-          <div class="agenda-item">
-            <div>
-              <h4>${App.escapeHtml(evento.nome)}</h4>
-              <p>
-                ${
-                  evento.local
-                    ? `<strong>Local:</strong> ${App.escapeHtml(evento.local)} • `
-                    : ''
-                }
-                <strong>Convidados:</strong> ${convidados} •
-                <strong>Equipe:</strong> ${equipe}
-              </p>
-            </div>
-            <span class="agenda-date">${App.formatDate(evento.data_realizacao)}</span>
+      return `
+        <div class="agenda-item">
+          <div>
+            <h4>${App.escapeHtml(evento.nome)}</h4>
+            <p>
+              ${evento.local ? `<strong>Local:</strong> ${App.escapeHtml(evento.local)} • ` : ''}
+              <strong>Convidados:</strong> ${convidados} •
+              <strong>Equipe:</strong> ${equipe}
+            </p>
           </div>
-        `;
-      })
-      .join('');
+          <span class="agenda-date">${App.formatDate(evento.data_realizacao)}</span>
+        </div>
+      `;
+    }).join('');
   }
 };
