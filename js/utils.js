@@ -1,150 +1,106 @@
-// ============================================================
-// utils.js — Utilitários globais da aplicação
-// ============================================================
-
 window.App = window.App || {};
 
-// ------------------------------------------------------------
-// Geração de ID único
-// ------------------------------------------------------------
 App.createId = function () {
-  if (typeof window.crypto?.randomUUID === 'function') {
+  if (typeof window.crypto !== 'undefined' && typeof window.crypto.randomUUID === 'function') {
     return window.crypto.randomUUID();
   }
-  // Fallback para ambientes sem crypto.randomUUID
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 };
 
-// ------------------------------------------------------------
-// Normalização de texto (busca sem acentos, case-insensitive)
-// "João" → "joao", "Ação" → "acao"
-// ------------------------------------------------------------
-App.normalizeText = function (value = '') {
+App.normalizeText = function (value) {
+  if (!value) return '';
   return String(value)
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // remove diacríticos
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim();
 };
 
-// ------------------------------------------------------------
-// Normalização de placa (somente letras e números, maiúsculas)
-// "abc-1d23" → "ABC1D23"
-// ------------------------------------------------------------
-App.normalizePlate = function (value = '') {
+App.normalizePlate = function (value) {
+  if (!value) return '';
   return String(value)
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, '');
 };
 
-// ------------------------------------------------------------
-// Escape de HTML (previne XSS em templates de string)
-// ------------------------------------------------------------
-App.escapeHtml = function (value = '') {
+App.escapeHtml = function (value) {
+  if (!value) return '';
   return String(value)
-    .replace(/&/g,  '&')
-    .replace(/</g,  '<')
-    .replace(/>/g,  '>')
-    .replace(/"/g,  '&quot;')
-    .replace(/'/g,  '&#039;');
+    .replace(/&/g, '&')
+    .replace(/</g, '<')
+    .replace(/>/g, '>')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 };
 
-// ------------------------------------------------------------
-// Data de hoje no formato ISO (YYYY-MM-DD) respeitando timezone local
-// Evita o bug clássico de UTC vs local que muda a data em fusos negativos
-// ------------------------------------------------------------
 App.getTodayISO = function () {
-  const now    = new Date();
-  const offset = now.getTimezoneOffset();
-  const local  = new Date(now.getTime() - offset * 60_000);
+  var now = new Date();
+  var offset = now.getTimezoneOffset();
+  var local = new Date(now.getTime() - offset * 60000);
   return local.toISOString().split('T')[0];
 };
 
-// Alias semântico usado em alguns arquivos
 App.getTodayString = App.getTodayISO;
 
-// ------------------------------------------------------------
-// Formata data ISO (YYYY-MM-DD ou datetime) → DD/MM/AAAA
-// ------------------------------------------------------------
 App.formatDate = function (value) {
   if (!value) return '—';
-
-  const dateOnly = String(value).includes('T')
-    ? String(value).split('T')[0]
-    : String(value);
-
-  const parts = dateOnly.split('-');
-  if (parts.length !== 3) return String(value);
-
-  const [y, m, d] = parts;
-  return `${d}/${m}/${y}`;
+  var str = String(value);
+  var dateOnly = str.indexOf('T') !== -1 ? str.split('T')[0] : str;
+  var parts = dateOnly.split('-');
+  if (parts.length !== 3) return str;
+  return parts[2] + '/' + parts[1] + '/' + parts[0];
 };
 
-// ------------------------------------------------------------
-// Formata datetime ISO → localização pt-BR
-// "2026-04-18T13:00:00Z" → "18/04/2026, 10:00:00"
-// ------------------------------------------------------------
 App.formatDateTime = function (value) {
   if (!value) return '—';
-
-  const date = new Date(value);
+  var date = new Date(value);
   if (isNaN(date.getTime())) return String(value);
-
   return date.toLocaleString('pt-BR');
 };
 
-// ------------------------------------------------------------
-// Sanitiza string para uso como nome de arquivo
-// "Jantar Corporativo — 18/04/2026" → "jantar_corporativo_18_04_2026"
-// ------------------------------------------------------------
-App.sanitizeFileName = function (value = '') {
-  return String(value)
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\w\-]+/g, '_')
-    .replace(/_+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .toLowerCase();
+App.sanitizeFileName = function (value) {
+  if (!value) return '';
+  var s = String(value).normalize('NFD');
+  s = s.replace(/[\u0300-\u036f]/g, '');
+  s = s.replace(/[^\w-]+/g, '_');
+  s = s.replace(/_+/g, '_');
+  s = s.replace(/^_+/, '');
+  s = s.replace(/_+$/, '');
+  return s.toLowerCase();
 };
 
-// ------------------------------------------------------------
-// Debounce — evita execuções excessivas em eventos de input
-// Uso: input.addEventListener('input', App._debounce(fn, 200))
-// ------------------------------------------------------------
-App._debounce = function (fn, delay = 200) {
-  let timer;
-  return function (...args) {
+App._debounce = function (fn, delay) {
+  if (!delay) delay = 200;
+  var timer;
+  return function () {
+    var args = arguments;
+    var ctx = this;
     clearTimeout(timer);
-    timer = setTimeout(() => fn.apply(this, args), delay);
+    timer = setTimeout(function () {
+      fn.apply(ctx, args);
+    }, delay);
   };
 };
 
-// ------------------------------------------------------------
-// Loading state em botões de formulário
-// Uso: App._setButtonLoading(btn, true, 'Salvando…')
-// ------------------------------------------------------------
-App._setButtonLoading = function (btn, isLoading, loadingText = 'Aguarde…') {
+App._setButtonLoading = function (btn, isLoading, loadingText) {
   if (!btn) return;
-
+  if (!loadingText) loadingText = 'Aguarde…';
   if (isLoading) {
-    btn.disabled             = true;
+    btn.disabled = true;
     btn.dataset.originalText = btn.textContent;
-    btn.textContent          = loadingText;
+    btn.textContent = loadingText;
   } else {
-    btn.disabled    = false;
+    btn.disabled = false;
     btn.textContent = btn.dataset.originalText || btn.textContent;
     delete btn.dataset.originalText;
   }
 };
 
-// ------------------------------------------------------------
-// Toast — notificações não-bloqueantes
-// Uso: App.showToast('Salvo!', 'success', 3200)
-// Tipos: 'success' | 'error' | 'warning' | 'info'
-// ------------------------------------------------------------
-App.showToast = function (message, type = 'info', duration = 3200) {
-  let container = document.getElementById('toastContainer');
+App.showToast = function (message, type, duration) {
+  if (!type) type = 'info';
+  if (!duration) duration = 3200;
 
+  var container = document.getElementById('toastContainer');
   if (!container) {
     container = document.createElement('div');
     container.id = 'toastContainer';
@@ -153,36 +109,25 @@ App.showToast = function (message, type = 'info', duration = 3200) {
     document.body.appendChild(container);
   }
 
-  const toast = document.createElement('div');
-  toast.className        = `toast toast--${type}`;
-  toast.textContent      = message;
+  var toast = document.createElement('div');
+  toast.className = 'toast toast--' + type;
+  toast.textContent = message;
   toast.setAttribute('role', 'status');
-
   container.appendChild(toast);
 
-  // Força reflow para a animação de entrada funcionar
   void toast.offsetHeight;
   toast.classList.add('toast--visible');
 
-  setTimeout(() => {
+  setTimeout(function () {
     toast.classList.remove('toast--visible');
     toast.classList.add('toast--hidden');
-    toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+    toast.addEventListener('transitionend', function () {
+      toast.remove();
+    }, { once: true });
   }, duration);
 };
 
-// ------------------------------------------------------------
-// Modal de confirmação genérico — retorna Promise<boolean>
-// Substitui App.askConfirm e App.resolveConfirmModal
-//
-// Uso:
-//   const ok = await App.confirm('Excluir este evento?', 'Excluir evento');
-//   if (ok) { ... }
-//
-// Nota: App.confirm está definido em dom.js (precisa do App.dom)
-// Este alias garante retrocompatibilidade caso algum arquivo
-// ainda chame App.askConfirm
-// ------------------------------------------------------------
-App.askConfirm = function ({ title, message } = {}) {
-  return App.confirm(message, title);
+App.askConfirm = function (opts) {
+  if (!opts) opts = {};
+  return App.confirm(opts.message, opts.title);
 };
