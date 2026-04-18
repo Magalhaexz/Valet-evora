@@ -708,7 +708,7 @@
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
       <h1>ÉVORA</h1>
-      <p class="auth-subtitle">PORTARIA vallet</p>
+      <p class="auth-subtitle">PORTARIA valet</p>
 
       <form id="loginForm" class="auth-form">
         <div class="field">
@@ -734,7 +734,7 @@
     <aside class="sidebar" id="sidebar">
       <div class="brand">
         <h1>ÉVORA</h1>
-        <div class="brand-subtitle">PORTARIA vallet</div>
+        <div class="brand-subtitle">PORTARIA valet</div>
       </div>
 
       <nav class="menu">
@@ -1037,8 +1037,8 @@
   </div>
 
   <script>
-   const SUPABASE_URL = 'https://yccvpwjxfstjbvuvrgch.supabase.co';
-   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljY3Zwd2p4ZnN0amJ2dXZyZ2NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NTI1NzIsImV4cCI6MjA5MjAyODU3Mn0.QwN4nQarFcPWCiKcMioNN5grraQmxKpm9frakXY2q3U';
+    const SUPABASE_URL = 'https://yccvpwjxfstjbvuvrgch.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljY3Zwd2p4ZnN0amJ2dXZyZ2NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NTI1NzIsImV4cCI6MjA5MjAyODU3Mn0.QwN4nQarFcPWCiKcMioNN5grraQmxKpm9frakXY2q3U';
 
     const db = isSupabaseConfigured()
       ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -1948,106 +1948,149 @@
     }
 
     function exportExcel() {
-  const wb = XLSX.utils.book_new();
+      const eventosOrdenados = [...state.eventos].sort((a, b) =>
+        a.data_realizacao.localeCompare(b.data_realizacao)
+      );
 
-  const eventosSheet = state.eventos.map(ev => ({
-    ID: ev.id,
-    'Nome do evento': ev.nome,
-    'Data de realização': formatDate(ev.data_realizacao),
-    Local: ev.local || '',
-    Observações: ev.observacoes || '',
-    'Criado em': formatDateTime(ev.criado_em)
-  }));
+      if (!eventosOrdenados.length) {
+        alert('Não há eventos cadastrados para exportar.');
+        return;
+      }
 
-  const pessoasSheet = state.pessoas.map(p => ({
-    ID: p.id,
-    Nome: p.nome,
-    Placa: p.placa,
-    Telefone: p.telefone,
-    'E-mail': p.email || '',
-    'Criado em': formatDateTime(p.criado_em)
-  }));
+      const listaEventos = eventosOrdenados
+        .map((ev, index) => `${index + 1}. ${ev.nome} - ${formatDate(ev.data_realizacao)}`)
+        .join('\n');
 
-  const callbackEventoSheet = state.presencas.map(pr => {
-    const evento = state.eventos.find(ev => ev.id === pr.evento_id);
-    const pessoa = state.pessoas.find(p => p.id === pr.pessoa_id);
+      const escolha = prompt(
+        `Escolha o evento que deseja exportar digitando o número:\n\n${listaEventos}`
+      );
 
-    return {
-      ID: pr.id,
-      Evento: evento?.nome || '',
-      'Data do evento': evento ? formatDate(evento.data_realizacao) : '',
-      Local: evento?.local || '',
-      Pessoa: pessoa?.nome || '',
-      Placa: pessoa?.placa || '',
-      Telefone: pessoa?.telefone || '',
-      'E-mail': pessoa?.email || '',
-      'Registrado em': formatDateTime(pr.registrado_em),
+      if (escolha === null) return;
 
-      'Status callback': 'Pendente',
-      'Data callback': '',
-      'Responsável callback': '',
-      'Retorno do cliente': '',
-      'Observações callback': ''
-    };
-  });
+      const numeroEscolhido = Number(escolha.trim());
 
-  const funcionariosSheet = state.funcionarios.map(f => ({
-    ID: f.id,
-    Nome: f.nome,
-    Cargo: f.cargo,
-    Telefone: f.telefone || '',
-    Observações: f.observacoes || '',
-    'Criado em': formatDateTime(f.criado_em)
-  }));
+      if (
+        !Number.isInteger(numeroEscolhido) ||
+        numeroEscolhido < 1 ||
+        numeroEscolhido > eventosOrdenados.length
+      ) {
+        alert('Seleção inválida. Digite um número válido da lista.');
+        return;
+      }
 
-  const equipeEventoSheet = state.funcionariosEventos.map(fe => {
-    const evento = state.eventos.find(ev => ev.id === fe.evento_id);
-    const funcionario = state.funcionarios.find(f => f.id === fe.funcionario_id);
+      const eventoSelecionado = eventosOrdenados[numeroEscolhido - 1];
 
-    return {
-      ID: fe.id,
-      Evento: evento?.nome || '',
-      'Data do evento': evento ? formatDate(evento.data_realizacao) : '',
-      Funcionário: funcionario?.nome || '',
-      Cargo: funcionario?.cargo || '',
-      Telefone: funcionario?.telefone || '',
-      Observações: funcionario?.observacoes || '',
-      'Registrado em': formatDateTime(fe.registrado_em)
-    };
-  });
+      const pessoasHeaders = [
+        'Evento',
+        'Data do evento',
+        'Local',
+        'Pessoa',
+        'Placa',
+        'Telefone',
+        'E-mail',
+        'Registrado em',
+        'Status callback',
+        'Data callback',
+        'Responsável callback',
+        'Retorno do cliente',
+        'Observações callback'
+      ];
 
-  XLSX.utils.book_append_sheet(
-    wb,
-    XLSX.utils.json_to_sheet(eventosSheet),
-    'Eventos'
-  );
+      const equipeHeaders = [
+        'Evento',
+        'Data do evento',
+        'Local',
+        'Funcionário',
+        'Cargo',
+        'Telefone',
+        'Observações',
+        'Registrado em'
+      ];
 
-  XLSX.utils.book_append_sheet(
-    wb,
-    XLSX.utils.json_to_sheet(pessoasSheet),
-    'Pessoas'
-  );
+      const pessoasRows = state.presencas
+        .filter(pr => pr.evento_id === eventoSelecionado.id)
+        .map(pr => {
+          const pessoa = state.pessoas.find(p => p.id === pr.pessoa_id);
 
-  XLSX.utils.book_append_sheet(
-    wb,
-    XLSX.utils.json_to_sheet(callbackEventoSheet),
-    'Callback_Evento'
-  );
+          return {
+            'Evento': eventoSelecionado.nome,
+            'Data do evento': formatDate(eventoSelecionado.data_realizacao),
+            'Local': eventoSelecionado.local || '',
+            'Pessoa': pessoa?.nome || '',
+            'Placa': pessoa?.placa || '',
+            'Telefone': pessoa?.telefone || '',
+            'E-mail': pessoa?.email || '',
+            'Registrado em': formatDateTime(pr.registrado_em),
+            'Status callback': 'Pendente',
+            'Data callback': '',
+            'Responsável callback': '',
+            'Retorno do cliente': '',
+            'Observações callback': ''
+          };
+        });
 
-  XLSX.utils.book_append_sheet(
-    wb,
-    XLSX.utils.json_to_sheet(funcionariosSheet),
-    'Funcionarios'
-  );
+      const equipeRows = state.funcionariosEventos
+        .filter(fe => fe.evento_id === eventoSelecionado.id)
+        .map(fe => {
+          const funcionario = state.funcionarios.find(f => f.id === fe.funcionario_id);
 
-  XLSX.utils.book_append_sheet(
-    wb,
-    XLSX.utils.json_to_sheet(equipeEventoSheet),
-    'Equipe_Evento'
-  );
+          return {
+            'Evento': eventoSelecionado.nome,
+            'Data do evento': formatDate(eventoSelecionado.data_realizacao),
+            'Local': eventoSelecionado.local || '',
+            'Funcionário': funcionario?.nome || '',
+            'Cargo': funcionario?.cargo || '',
+            'Telefone': funcionario?.telefone || '',
+            'Observações': funcionario?.observacoes || '',
+            'Registrado em': formatDateTime(fe.registrado_em)
+          };
+        });
 
-  XLSX.writeFile(wb, 'evora_callback_eventos.xlsx');
-}
+      const wb = XLSX.utils.book_new();
+
+      const pessoasSheet = buildSheetWithHeaders(pessoasHeaders, pessoasRows);
+      const equipeSheet = buildSheetWithHeaders(equipeHeaders, equipeRows);
+
+      XLSX.utils.book_append_sheet(wb, pessoasSheet, 'Pessoas');
+      XLSX.utils.book_append_sheet(wb, equipeSheet, 'Equipe_Funcionarios');
+
+      const nomeArquivo = sanitizeFileName(
+        `${eventoSelecionado.nome}_${formatDate(eventoSelecionado.data_realizacao)}`
+      );
+
+      XLSX.writeFile(wb, `${nomeArquivo}_valet.xlsx`);
+    }
+
+    function buildSheetWithHeaders(headers, rows) {
+      const aoa = [headers];
+
+      if (rows.length) {
+        rows.forEach(row => {
+          aoa.push(headers.map(header => row[header] ?? ''));
+        });
+      } else {
+        aoa.push(headers.map((header, index) => index === 0 ? 'Sem registros' : ''));
+      }
+
+      const sheet = XLSX.utils.aoa_to_sheet(aoa);
+
+      sheet['!cols'] = headers.map(header => ({
+        wch: Math.max(header.length + 2, 18)
+      }));
+
+      return sheet;
+    }
+
+    function sanitizeFileName(value = '') {
+      return String(value)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^\w\-]+/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .toLowerCase();
+    }
+
     function createId() {
       return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
     }
