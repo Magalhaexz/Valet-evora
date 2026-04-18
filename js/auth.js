@@ -1,172 +1,246 @@
-// ============================================================
-// auth.js — Autenticação via Supabase
-// ============================================================
-
 window.App = window.App || {};
 
-// ------------------------------------------------------------
-// Bootstrap: verifica sessão ativa ao carregar o app
-// ------------------------------------------------------------
-App.bootstrapAuth = async function () {
-  if (!App.ensureSupabaseReady(false)) {
-    App.state.currentUser = null;
-    App.showAuth();
-    App.updateCurrentUserBadge('');
-    return;
+(function () {
+  // Evita inicializar duas vezes (muito comum causar toast indevido)
+  if (App._authBootstrapped) return;
+  App._authBootstrapped = true;
+
+  function $(id) {
+    return document.getElementById(id);
   }
 
-  try {
-    const { data, error } = await App.db.auth.getSession();
-
-    if (error) {
-      console.error('[Auth] Erro ao obter sessão:', error);
-      App.showToast('Erro ao iniciar autenticação.', 'error');
-      App.showAuth();
-      return;
+  function firstId(ids) {
+    for (var i = 0; i < ids.length; i++) {
+      var el = $(ids[i]);
+      if (el) return el;
     }
-
-    await App.applySession(data?.session ?? null);
-
-    // Listener reativo para mudanças de sessão (login, logout, expiração)
-    App.db.auth.onAuthStateChange(async (_event, session) => {
-      await App.applySession(session);
-    });
-
-  } catch (err) {
-    console.error('[Auth] Erro inesperado no bootstrapAuth:', err);
-    App.showToast('Falha ao iniciar autenticação.', 'error');
-    App.showAuth();
-  }
-};
-
-// ------------------------------------------------------------
-// Aplica ou limpa sessão — usado pelo bootstrap e pelo listener
-// ------------------------------------------------------------
-App.applySession = async function (session) {
-  const user = session?.user ?? null;
-  App.state.currentUser = user;
-
-  if (user) {
-    App.showApp();
-    App.updateCurrentUserBadge(user.email || 'Usuário');
-
-    const loaded = await App.loadAllData(false);
-
-    if (!loaded) {
-      console.warn('[Auth] Sessão ativa, mas os dados não puderam ser carregados.');
-      App.showToast('Dados não carregados. Tente recarregar a página.', 'warning');
-    }
-
-    App.renderAll();
-    App.startAutoRefresh();
-
-  } else {
-    App.stopAutoRefresh();
-    App.clearState();
-    App.renderAll();
-    App.updateCurrentUserBadge('');
-    App.showAuth();
-  }
-};
-
-// ------------------------------------------------------------
-// Login com e-mail e senha
-// ------------------------------------------------------------
-App.handleLogin = async function (event) {
-  event.preventDefault();
-
-  if (!App.ensureSupabaseReady()) return;
-
-  const email    = App.dom.loginEmail?.value.trim() ?? '';
-  const password = App.dom.loginPassword?.value ?? '';
-
-  if (!email || !password) {
-    App.showToast('Preencha e-mail e senha.', 'warning');
-    return;
+    return null;
   }
 
-  // Feedback visual no botão durante o request
-  const submitBtn = App.dom.loginForm?.querySelector('button[type="submit"]');
-  App._setLoginLoading(submitBtn, true);
-
-  try {
-    const { data, error } = await App.db.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      console.error('[Auth] Erro no login:', error);
-      const msg = App._translateAuthError(error.message);
-      App.showToast(msg, 'error');
-      return;
-    }
-
-    App.dom.loginForm?.reset();
-
-    if (data?.session) {
-      await App.applySession(data.session);
-    } else {
-      App.showToast('Login realizado, mas a sessão não foi retornada.', 'warning');
-    }
-
-  } catch (err) {
-    console.error('[Auth] Erro inesperado no login:', err);
-    App.showToast('Não foi possível entrar agora. Tente novamente.', 'error');
-  } finally {
-    App._setLoginLoading(submitBtn, false);
-  }
-};
-
-// ------------------------------------------------------------
-// Logout
-// ------------------------------------------------------------
-App.handleLogout = async function () {
-  if (!App.ensureSupabaseReady()) return;
-
-  try {
-    const { error } = await App.db.auth.signOut();
-
-    if (error) {
-      console.error('[Auth] Erro ao sair:', error);
-      App.showToast('Erro ao sair da conta.', 'error');
-      return;
-    }
-
-    App.showToast('Você saiu da conta.', 'success');
-    await App.applySession(null);
-
-  } catch (err) {
-    console.error('[Auth] Erro inesperado no logout:', err);
-    App.showToast('Não foi possível sair agora.', 'error');
-  }
-};
-
-// ------------------------------------------------------------
-// Helpers internos
-// ------------------------------------------------------------
-
-/**
- * Ativa/desativa o estado de loading no botão de submit do login.
- */
-App._setLoginLoading = function (btn, isLoading) {
-  if (!btn) return;
-  btn.disabled = isLoading;
-  btn.textContent = isLoading ? 'Entrando…' : 'Entrar';
-};
-
-/**
- * Traduz mensagens de erro do Supabase para português.
- */
-App._translateAuthError = function (message = '') {
-  const map = {
-    'Invalid login credentials':        'E-mail ou senha incorretos.',
-    'Email not confirmed':              'Confirme seu e-mail antes de entrar.',
-    'Too many requests':                'Muitas tentativas. Aguarde alguns minutos.',
-    'User not found':                   'Usuário não encontrado.',
-    'Password should be at least 6 characters': 'A senha deve ter ao menos 6 caracteres.',
+  // Fallbacks (caso algum arquivo não tenha definido)
+  App.ensureSupabaseReady = App.ensureSupabaseReady || function () {
+    return !!App.db;
   };
 
-  for (const [key, translation] of Object.entries(map)) {
-    if (message.includes(key)) return translation;
+  App.showToast = App.showToast || function (msg) {
+    console.log('[toast]', msg);
+  };
+
+  App._setButtonLoading = App._setButtonLoading || function (btn, isLoading, loadingText) {
+    if (!btn) return;
+    loadingText = loadingText || 'Aguarde…';
+    if (isLoading) {
+      btn.disabled = true;
+      btn.dataset.originalText = btn.textContent;
+      btn.textContent = loadingText;
+    } else {
+      btn.disabled = false;
+      btn.textContent = btn.dataset.originalText || btn.textContent;
+      delete btn.dataset.originalText;
+    }
+  };
+
+  // Mostra/oculta telas (fallback)
+  App._uiShowAuthed = App._uiShowAuthed || function (session) {
+    var authScreen = firstId(['authScreen', 'auth', 'loginScreen']);
+    var appShell = firstId(['app', 'appShell', 'mainApp']);
+
+    if (authScreen) authScreen.classList.add('hidden');
+    if (appShell) appShell.classList.remove('hidden');
+
+    var badge = $('currentUserEmail');
+    if (badge) {
+      badge.textContent = (session && session.user && session.user.email) ? session.user.email : '';
+      badge.classList.remove('hidden');
+    }
+  };
+
+  App._uiShowUnAuthed = App._uiShowUnAuthed || function () {
+    var authScreen = firstId(['authScreen', 'auth', 'loginScreen']);
+    var appShell = firstId(['app', 'appShell', 'mainApp']);
+
+    if (appShell) appShell.classList.add('hidden');
+    if (authScreen) authScreen.classList.remove('hidden');
+
+    var badge = $('currentUserEmail');
+    if (badge) {
+      badge.textContent = '';
+      badge.classList.add('hidden');
+    }
+  };
+
+  // Se já existir no seu projeto, ele usa. Senão, aplica UI por aqui.
+  App.applySession = App.applySession || function (session) {
+    App.state = App.state || {};
+    App.state.session = session;
+    App._uiShowAuthed(session);
+
+    // Se existir renderAll, chama (não quebra se não existir)
+    if (typeof App.renderAll === 'function') {
+      App.renderAll();
+    }
+  };
+
+  App.clearSession = App.clearSession || function () {
+    App.state = App.state || {};
+    App.state.session = null;
+    App._uiShowUnAuthed();
+  };
+
+  // ------------------------------------------------------------------
+  // Login por URL (apenas se NÃO houver sessão)
+  // ------------------------------------------------------------------
+  async function tryAutoLoginFromQueryIfNoSession() {
+    var params = new URLSearchParams(window.location.search);
+    var email = params.get('email');
+    var password = params.get('password');
+
+    // Se não tem params, não faz nada (evita toast “fantasma”)
+    if (!email || !password) return;
+
+    // Só tenta se realmente não houver sessão
+    var sess = await getCurrentSession();
+    if (sess) {
+      // Limpa URL por segurança (não manter senha no link)
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return;
+    }
+
+    var res = await App.db.auth.signInWithPassword({ email: email, password: password });
+
+    if (res.error || !res.data || !res.data.session) {
+      App.showToast('Não foi possível entrar agora. Tente novamente.', 'error');
+      return;
+    }
+
+    App.applySession(res.data.session);
+
+    // Limpa URL (recomendado)
+    window.history.replaceState({}, document.title, window.location.pathname);
   }
 
-  return message || 'Erro de autenticação.';
-};
+  // ------------------------------------------------------------------
+  // Sessão atual
+  // ------------------------------------------------------------------
+  async function getCurrentSession() {
+    if (!App.ensureSupabaseReady()) return null;
+
+    var r = await App.db.auth.getSession();
+    var session = r && r.data ? r.data.session : null;
+    return session || null;
+  }
+
+  // ------------------------------------------------------------------
+  // Bind do formulário de login
+  // ------------------------------------------------------------------
+  function bindLoginForm() {
+    var form =
+      firstId(['authForm', 'loginForm']) ||
+      document.querySelector('form[data-auth="login"]') ||
+      document.querySelector('.auth-form');
+
+    var inputEmail =
+      firstId(['loginEmail', 'email', 'authEmail']) ||
+      document.querySelector('input[type="email"]');
+
+    var inputPass =
+      firstId(['loginPassword', 'password', 'authPassword']) ||
+      document.querySelector('input[type="password"]');
+
+    var btnLogin =
+      firstId(['btnLogin', 'btnEntrar']) ||
+      (form ? form.querySelector('button[type="submit"]') : null);
+
+    if (!form) return;
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      if (!App.ensureSupabaseReady()) {
+        App.showToast('Supabase não inicializado (config.js).', 'error');
+        return;
+      }
+
+      var email = inputEmail ? String(inputEmail.value || '').trim() : '';
+      var password = inputPass ? String(inputPass.value || '') : '';
+
+      if (!email || !password) {
+        App.showToast('Informe e-mail e senha.', 'warning');
+        return;
+      }
+
+      App._setButtonLoading(btnLogin, true, 'Entrando…');
+
+      try {
+        var res = await App.db.auth.signInWithPassword({ email: email, password: password });
+
+        if (res.error || !res.data || !res.data.session) {
+          App.showToast('Não foi possível entrar agora. Tente novamente.', 'error');
+          App._setButtonLoading(btnLogin, false);
+          return;
+        }
+
+        App.applySession(res.data.session);
+        App._setButtonLoading(btnLogin, false);
+      } catch (err) {
+        App.showToast('Erro inesperado ao entrar.', 'error');
+        App._setButtonLoading(btnLogin, false);
+      }
+    });
+  }
+
+  // ------------------------------------------------------------------
+  // Bind do logout
+  // ------------------------------------------------------------------
+  function bindLogout() {
+    var btnLogout = firstId(['btnLogout', 'btnSair', 'logoutBtn']);
+    if (!btnLogout) return;
+
+    btnLogout.addEventListener('click', async function () {
+      if (!App.ensureSupabaseReady()) return;
+
+      App._setButtonLoading(btnLogout, true, 'Saindo…');
+
+      try {
+        await App.db.auth.signOut();
+      } catch (e) {
+        // mesmo se falhar, limpa UI local
+      }
+
+      App.clearSession();
+      App._setButtonLoading(btnLogout, false);
+    });
+  }
+
+  // ------------------------------------------------------------------
+  // Bootstrap principal
+  // ------------------------------------------------------------------
+  App.initAuth = async function () {
+    if (!App.ensureSupabaseReady()) return;
+
+    // 1) Sessão atual primeiro (isso evita “login duplo”)
+    var session = await getCurrentSession();
+    if (session) {
+      App.applySession(session);
+    } else {
+      App.clearSession();
+    }
+
+    // 2) Bind UI
+    bindLoginForm();
+    bindLogout();
+
+    // 3) Auto-login por querystring (somente se não tiver sessão)
+    await tryAutoLoginFromQueryIfNoSession();
+
+    // 4) Listener (mantém UI sincronizada sem toasts desnecessários)
+    if (!App._authListenerBound) {
+      App._authListenerBound = true;
+
+      App.db.auth.onAuthStateChange(function (event, session2) {
+        if (event === 'SIGNED_IN' && session2) App.applySession(session2);
+        if (event === 'SIGNED_OUT') App.clearSession();
+      });
+    }
+  };
+})();
