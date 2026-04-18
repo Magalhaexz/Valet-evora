@@ -37,7 +37,12 @@ App.applySession = async function (session) {
     App.showApp();
     App.updateCurrentUserBadge(App.state.currentUser.email || 'Usuário');
 
-    await App.loadAllData(false);
+    const loaded = await App.loadAllData(false);
+
+    if (!loaded) {
+      console.warn('Sessão iniciada, mas os dados não puderam ser carregados.');
+    }
+
     App.renderAll();
     App.startAutoRefresh();
   } else {
@@ -63,19 +68,24 @@ App.handleLogin = async function (event) {
   }
 
   try {
-    const { error } = await App.db.auth.signInWithPassword({
+    const { data, error } = await App.db.auth.signInWithPassword({
       email,
       password
     });
 
     if (error) {
       console.error('Erro no login:', error);
-      App.showToast('Login inválido. Verifique e-mail e senha.', 'error');
+      App.showToast(error.message || 'Login inválido. Verifique e-mail e senha.', 'error');
       return;
     }
 
     App.dom.loginForm?.reset();
-    App.showToast('Login realizado com sucesso.', 'success');
+
+    if (data?.session) {
+      await App.applySession(data.session);
+    } else {
+      App.showToast('Login realizado, mas a sessão não foi retornada.', 'warning');
+    }
   } catch (error) {
     console.error('Erro inesperado no login:', error);
     App.showToast('Não foi possível entrar agora.', 'error');
@@ -95,6 +105,7 @@ App.handleLogout = async function () {
     }
 
     App.showToast('Você saiu da conta.', 'success');
+    await App.applySession(null);
   } catch (error) {
     console.error('Erro inesperado no logout:', error);
     App.showToast('Não foi possível sair agora.', 'error');
