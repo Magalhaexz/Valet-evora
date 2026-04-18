@@ -1948,118 +1948,118 @@
     }
 
     function exportExcel() {
-      const eventosOrdenados = [...state.eventos].sort((a, b) =>
-        a.data_realizacao.localeCompare(b.data_realizacao)
-      );
+  const eventosOrdenados = [...state.eventos].sort((a, b) =>
+    a.data_realizacao.localeCompare(b.data_realizacao)
+  );
 
-      if (!eventosOrdenados.length) {
-        alert('Não há eventos cadastrados para exportar.');
-        return;
-      }
+  if (!eventosOrdenados.length) {
+    alert('Não há eventos cadastrados para exportar.');
+    return;
+  }
 
-      const listaEventos = eventosOrdenados
-        .map((ev, index) => `${index + 1}. ${ev.nome} - ${formatDate(ev.data_realizacao)}`)
-        .join('\n');
+  const listaEventos = eventosOrdenados
+    .map((ev, index) => `${index + 1}. ${ev.nome} - ${formatDate(ev.data_realizacao)}`)
+    .join('\n');
 
-      const escolha = prompt(
-        `Escolha o evento que deseja exportar digitando o número:\n\n${listaEventos}`
-      );
+  const escolha = prompt(
+    `Escolha o evento que deseja exportar digitando o número:\n\n${listaEventos}`
+  );
 
-      if (escolha === null) return;
+  if (escolha === null) return;
 
-      const numeroEscolhido = Number(escolha.trim());
+  const numeroEscolhido = Number(escolha.trim());
 
-      if (
-        !Number.isInteger(numeroEscolhido) ||
-        numeroEscolhido < 1 ||
-        numeroEscolhido > eventosOrdenados.length
-      ) {
-        alert('Seleção inválida. Digite um número válido da lista.');
-        return;
-      }
+  if (
+    !Number.isInteger(numeroEscolhido) ||
+    numeroEscolhido < 1 ||
+    numeroEscolhido > eventosOrdenados.length
+  ) {
+    alert('Seleção inválida. Digite um número válido da lista.');
+    return;
+  }
 
-      const eventoSelecionado = eventosOrdenados[numeroEscolhido - 1];
+  const eventoSelecionado = eventosOrdenados[numeroEscolhido - 1];
 
-      const pessoasHeaders = [
-        'Evento',
-        'Data do evento',
-        'Local',
-        'Pessoa',
-        'Placa',
-        'Telefone',
-        'E-mail',
-        'Registrado em',
-        'Status callback',
-        'Data callback',
-        'Responsável callback',
-        'Retorno do cliente',
-        'Observações callback'
-      ];
+  const pessoasHeaders = [
+    'Evento',
+    'Data do evento',
+    'Local',
+    'Pessoa',
+    'Placa',
+    'Telefone',
+    'E-mail',
+    'Registrado em',
+    'Status callback',
+    'Data callback',
+    'Responsável callback',
+    'Retorno do cliente',
+    'Observações callback'
+  ];
 
-      const equipeHeaders = [
-        'Evento',
-        'Data do evento',
-        'Local',
-        'Funcionário',
-        'Cargo',
-        'Telefone',
-        'Observações',
-        'Registrado em'
-      ];
+  const equipeHeaders = [
+    'Evento',
+    'Data do evento',
+    'Local',
+    'Funcionário',
+    'Cargo',
+    'Telefone',
+    'Observações',
+    'Registrado em'
+  ];
 
-      const pessoasRows = state.presencas
-        .filter(pr => pr.evento_id === eventoSelecionado.id)
-        .map(pr => {
-          const pessoa = state.pessoas.find(p => p.id === pr.pessoa_id);
+  const pessoasRows = state.presencas
+    .filter(pr => pr.evento_id === eventoSelecionado.id)
+    .map(pr => {
+      const pessoa = state.pessoas.find(p => p.id === pr.pessoa_id);
 
-          return {
-            'Evento': eventoSelecionado.nome,
-            'Data do evento': formatDate(eventoSelecionado.data_realizacao),
-            'Local': eventoSelecionado.local || '',
-            'Pessoa': pessoa?.nome || '',
-            'Placa': pessoa?.placa || '',
-            'Telefone': pessoa?.telefone || '',
-            'E-mail': pessoa?.email || '',
-            'Registrado em': formatDateTime(pr.registrado_em),
-            'Status callback': 'Pendente',
-            'Data callback': '',
-            'Responsável callback': '',
-            'Retorno do cliente': '',
-            'Observações callback': ''
-          };
-        });
+      return {
+        'Evento': eventoSelecionado.nome,
+        'Data do evento': formatDate(eventoSelecionado.data_realizacao),
+        'Local': eventoSelecionado.local || '',
+        'Pessoa': pessoa?.nome || '',
+        'Placa': pessoa?.placa || '',
+        'Telefone': pessoa?.telefone || '',
+        'E-mail': pessoa?.email || '',
+        'Registrado em': formatDateTime(pr.registrado_em),
+        'Status callback': 'Pendente',
+        'Data callback': '',
+        'Responsável callback': '',
+        'Retorno do cliente': '',
+        'Observações callback': ''
+      };
+    });
 
-      const equipeRows = state.funcionariosEventos
-        .filter(fe => fe.evento_id === eventoSelecionado.id)
-        .map(fe => {
-          const funcionario = state.funcionarios.find(f => f.id === fe.funcionario_id);
+  const equipeRows = state.funcionariosEventos
+    .filter(fe => fe.evento_id === eventoSelecionado.id)
+    .map(fe => {
+      const funcionario = state.funcionarios.find(f => f.id === fe.funcionario_id);
 
-          return {
-            'Evento': eventoSelecionado.nome,
-            'Data do evento': formatDate(eventoSelecionado.data_realizacao),
-            'Local': eventoSelecionado.local || '',
-            'Funcionário': funcionario?.nome || '',
-            'Cargo': funcionario?.cargo || '',
-            'Telefone': funcionario?.telefone || '',
-            'Observações': funcionario?.observacoes || '',
-            'Registrado em': formatDateTime(fe.registrado_em)
-          };
-        });
+      return {
+        'Evento': eventoSelecionado.nome,
+        'Data do evento': formatDate(eventoSelecionado.data_realizacao),
+        'Local': eventoSelecionado.local || '',
+        'Funcionário': funcionario?.nome || '',
+        'Cargo': funcionario?.cargo || '',
+        'Telefone': funcionario?.telefone || '',
+        'Observações': funcionario?.observacoes || '',
+        'Registrado em': formatDateTime(fe.registrado_em)
+      };
+    });
 
-      const wb = XLSX.utils.book_new();
+  const wb = XLSX.utils.book_new();
 
-      const pessoasSheet = buildSheetWithHeaders(pessoasHeaders, pessoasRows);
-      const equipeSheet = buildSheetWithHeaders(equipeHeaders, equipeRows);
+  const pessoasSheet = buildSheetWithHeaders(pessoasHeaders, pessoasRows);
+  const equipeSheet = buildSheetWithHeaders(equipeHeaders, equipeRows);
 
-      XLSX.utils.book_append_sheet(wb, pessoasSheet, 'Pessoas');
-      XLSX.utils.book_append_sheet(wb, equipeSheet, 'Equipe_Funcionarios');
+  XLSX.utils.book_append_sheet(wb, pessoasSheet, 'Pessoas');
+  XLSX.utils.book_append_sheet(wb, equipeSheet, 'Equipe_Funcionarios');
 
-      const nomeArquivo = sanitizeFileName(
-        `${eventoSelecionado.nome}_${formatDate(eventoSelecionado.data_realizacao)}`
-      );
+  const nomeArquivo = sanitizeFileName(
+    `${eventoSelecionado.nome}_${formatDate(eventoSelecionado.data_realizacao)}`
+  );
 
-      XLSX.writeFile(wb, `${nomeArquivo}_valet.xlsx`);
-    }
+  XLSX.writeFile(wb, `${nomeArquivo}_valet.xlsx`);
+}
 
     function buildSheetWithHeaders(headers, rows) {
       const aoa = [headers];
